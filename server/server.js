@@ -1,70 +1,111 @@
+/* =========================================================
+   WORDLE ONLINE SERVER - VERSIONE PRODUZIONE
+   Supporta Render.com + WebSocket su stessa porta
+   ========================================================= */
+
+require('dotenv').config();
 const WebSocket = require('ws');
 const express = require('express');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const RoomManager = require('./roomManager');
 const GameManager = require('./gameManager');
+const AutoPinger = require('./autoPinger'); // Auto-ping per Render
+
+// Configurazione ambiente
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const PORT = process.env.PORT || 3000;
+const WS_PORT = process.env.WS_PORT || 8080;
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('../public'));
 
-// Servi il frontend
-app.get('/', (req, res) => {
-  res.sendFile('index.html', { root: '../public' });
+// Health check endpoint (per auto-ping e monitoraggio)
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'Wordle Online ITA',
+    environment: NODE_ENV
+  });
 });
 
-// API REST per statistiche
+// API status (statistiche reali)
 app.get('/api/stats', (req, res) => {
   const stats = {
-    playersOnline: roomManager.getOnlineCount(),
-    activeRooms: roomManager.rooms.size,
-    timestamp: Date.now()
+    playersOnline: roomManager ? roomManager.getOnlineCount() : 0,
+    activeRooms: roomManager ? roomManager.rooms.size : 0,
+    timestamp: Date.now(),
+    environment: NODE_ENV
   };
   res.json(stats);
 });
 
-// Inizializza WebSocket server
-const wss = new WebSocket.Server({ port: 8080 });
-console.log(`WebSocket server running on ws://localhost:8080`);
+// Serve il frontend
+app.get('/', (req, res) => {
+  res.sendFile('index.html', { root: '../public' });
+});
 
+// Gestione file statici
+app.use('/js', express.static('../public/js'));
+app.use('/css', express.static('../public/css'));
+
+// Inizializza manager
 const roomManager = new RoomManager();
 const gameManager = new GameManager();
-
-// Mappa socket → player
 const players = new Map();
 
-wss.on('connection', (ws) => {
-  console.log('Nuova connessione WebSocket');
+// Variabili per WebSocket server
+let wss;
+let server;
+
+// =========================================================
+// CONFIGURAZIONE WEB SOCKET BASATA SU AMBIENTE
+// =========================================================
+
+function initializeWebSocketServer(serverInstance) {
+  wss = new WebSocket.Server({ server: serverInstance });
   
-  ws.playerId = uuidv4();
-  players.set(ws.playerId, { socket: ws, room: null });
+  console.log(`WebSocket server inizializzato ${NODE_ENV === 'production' ? 'sulla stessa porta HTTP' : 'su porta ' + WS_PORT}`);
   
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      handleMessage(ws, data);
-    } catch (error) {
-      console.error('Errore parsing messaggio:', error);
-    }
+  wss.on('connection', (ws) => {
+    console.log('Nuova connessione WebSocket');
+    
+    ws.playerId = uuidv4();
+    players.set(ws.playerId, { socket: ws, room: null });
+    
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message);
+        handleMessage(ws, data);
+      } catch (error) {
+        console.error('Errore parsing messaggio:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log(`Disconnessione: ${ws.playerId}`);
+      handleDisconnection(ws);
+      players.delete(ws.playerId);
+    });
+    
+    ws.on('error', (error) => {
+      console.error(`WebSocket error per ${ws.playerId}:`, error);
+    });
+    
+    // Invia ID giocatore
+    ws.send(JSON.stringify({
+      type: 'welcome',
+      playerId: ws.playerId
+    }));
   });
-  
-  ws.on('close', () => {
-    console.log(`Disconnessione: ${ws.playerId}`);
-    handleDisconnection(ws);
-    players.delete(ws.playerId);
-  });
-  
-  // Invia ID giocatore
-  ws.send(JSON.stringify({
-    type: 'welcome',
-    playerId: ws.playerId
-  }));
-});
+}
+
+// =========================================================
+// HANDLER MESSAGGI (come prima, ma con wss globale)
+// =========================================================
 
 function handleMessage(ws, data) {
   const { type, payload } = data;
@@ -111,14 +152,12 @@ function handleCreateRoom(ws, payload) {
   const { playerName, settings } = payload;
   const roomCode = roomManager.createRoom(ws.playerId, playerName, settings);
   
-  // Aggiorna giocatore
   players.set(ws.playerId, {
     ...players.get(ws.playerId),
     name: playerName,
     room: roomCode
   });
   
-  // Notifica giocatore
   ws.send(JSON.stringify({
     type: 'room-created',
     roomCode,
@@ -148,7 +187,6 @@ function handleJoinRoom(ws, payload) {
     return;
   }
   
-  // Aggiungi giocatore alla stanza
   const success = roomManager.addPlayer(roomCode, {
     id: ws.playerId,
     name: playerName,
@@ -164,13 +202,11 @@ function handleJoinRoom(ws, payload) {
       room: roomCode
     });
     
-    // Notifica tutti i giocatori nella stanza
     broadcastToRoom(roomCode, {
       type: 'player-joined',
       player: { id: ws.playerId, name: playerName }
     });
     
-    // Invia stato stanza al nuovo giocatore
     ws.send(JSON.stringify({
       type: 'room-joined',
       roomCode,
@@ -189,13 +225,11 @@ function handleLeaveRoom(ws) {
   const roomCode = player.room;
   roomManager.removePlayer(roomCode, ws.playerId);
   
-  // Notifica altri giocatori
   broadcastToRoom(roomCode, {
     type: 'player-left',
     playerId: ws.playerId
   });
   
-  // Se stanza vuota, eliminala
   const room = roomManager.getRoom(roomCode);
   if (room && room.players.length === 0) {
     roomManager.removeRoom(roomCode);
@@ -216,10 +250,8 @@ function handleStartGame(ws) {
   const roomCode = player.room;
   const room = roomManager.getRoom(roomCode);
   
-  // Solo l'host può avviare il gioco
   if (room.hostId !== ws.playerId) return;
   
-  // Tutti devono essere ready
   const allReady = room.players.every(p => p.isReady);
   if (!allReady && room.players.length > 1) {
     ws.send(JSON.stringify({
@@ -229,10 +261,8 @@ function handleStartGame(ws) {
     return;
   }
   
-  // Inizia il gioco
   gameManager.startGame(roomCode, room);
   
-  // Notifica tutti
   broadcastToRoom(roomCode, {
     type: 'game-started',
     gameState: gameManager.getGameState(roomCode)
@@ -263,13 +293,11 @@ function handleMakeGuess(ws, payload) {
   const result = gameManager.processGuess(roomCode, ws.playerId, word);
   
   if (result.valid) {
-    // Notifica il giocatore
     ws.send(JSON.stringify({
       type: 'guess-result',
       ...result
     }));
     
-    // Se ha indovinato o finito i tentativi, passa il turno
     if (result.gameOver || result.guesses >= 6) {
       gameManager.nextTurn(roomCode);
       broadcastGameState(roomCode);
@@ -311,7 +339,7 @@ function handleDisconnection(ws) {
 
 function broadcastToRoom(roomCode, message) {
   const room = roomManager.getRoom(roomCode);
-  if (!room) return;
+  if (!room || !wss) return;
   
   room.players.forEach(player => {
     if (player.socket && player.socket.readyState === WebSocket.OPEN) {
@@ -328,7 +356,96 @@ function broadcastGameState(roomCode) {
   });
 }
 
-// Avvia server HTTP
-app.listen(PORT, () => {
-  console.log(`Server HTTP in ascolto su http://localhost:${PORT}`);
+// =========================================================
+// AVVIO SERVER - PARTE CRITICA
+// =========================================================
+
+console.log(`Ambiente: ${NODE_ENV}`);
+
+if (NODE_ENV === 'production') {
+  // =========================================================
+  // PRODUZIONE (Render.com) - WebSocket e HTTP sulla STESSA porta
+  // =========================================================
+  console.log(`Avvio in modalità produzione su porta ${PORT}`);
+  
+  server = app.listen(PORT, () => {
+    console.log(`✅ Server HTTP in ascolto su porta ${PORT}`);
+    console.log(`📡 WebSocket sarà disponibile sulla stessa porta`);
+  });
+  
+  // Inizializza WebSocket sul server HTTP esistente
+  initializeWebSocketServer(server);
+  
+} else {
+  // =========================================================
+  // SVILUPPO LOCALE - WebSocket e HTTP su porte DIVERSE
+  // =========================================================
+  console.log(`Avvio in modalità sviluppo`);
+  
+  // Server HTTP
+  server = app.listen(PORT, () => {
+    console.log(`✅ Server HTTP: http://localhost:${PORT}`);
+  });
+  
+  // Server WebSocket separato
+  wss = new WebSocket.Server({ port: WS_PORT });
+  console.log(`✅ WebSocket Server: ws://localhost:${WS_PORT}`);
+  
+  wss.on('connection', (ws) => {
+    console.log('Nuova connessione WebSocket (sviluppo)');
+    
+    ws.playerId = uuidv4();
+    players.set(ws.playerId, { socket: ws, room: null });
+    
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message);
+        handleMessage(ws, data);
+      } catch (error) {
+        console.error('Errore parsing messaggio:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log(`Disconnessione: ${ws.playerId}`);
+      handleDisconnection(ws);
+      players.delete(ws.playerId);
+    });
+    
+    ws.send(JSON.stringify({
+      type: 'welcome',
+      playerId: ws.playerId
+    }));
+  });
+}
+
+// =========================================================
+// AUTO-PING PER RENDER (previene sleep)
+// =========================================================
+
+if (NODE_ENV === 'production') {
+  const autoPinger = new AutoPinger();
+  autoPinger.start();
+  
+  console.log('🔄 Auto-ping attivato per mantenere server attivo');
+}
+
+// =========================================================
+// GESTIONE SHUTDOWN
+// =========================================================
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM ricevuto, shutdown pulito...');
+  if (server) server.close();
+  if (wss) wss.close();
+  process.exit(0);
 });
+
+process.on('SIGINT', () => {
+  console.log('SIGINT ricevuto, shutdown...');
+  if (server) server.close();
+  if (wss) wss.close();
+  process.exit(0);
+});
+
+console.log('🚀 Server Wordle Online ITA avviato!');

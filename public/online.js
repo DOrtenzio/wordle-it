@@ -67,10 +67,17 @@ class WordleOnline {
   }
   
   connectWebSocket() {
-    const wsUrl = window.location.hostname === 'localhost' 
-      ? 'ws://localhost:8080'
-      : `wss://${window.location.hostname}:8080`;
-    
+    let wsUrl;
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      wsUrl = 'ws://localhost:8080';
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+      wsUrl = protocol + window.location.host;
+      console.log('Produzione - URL WebSocket:', wsUrl);
+    }
+
+    console.log('Connessione WebSocket a:', wsUrl);
     this.socket = new WebSocket(wsUrl);
     
     this.socket.onopen = () => {
