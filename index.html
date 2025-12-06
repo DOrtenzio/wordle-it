@@ -2,22 +2,53 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wordle Infinito</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wordle ITA</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<h1>Wordle Infinito (ITA)</h1>
+<header>
+  <h1>Morlde ITA</h1>
+  <div class="buttons">
+    <button id="theme-btn" class="icon-btn">🌓</button>
+    <button id="stats-btn" class="icon-btn">📊</button>
+    <button id="hard-btn" class="icon-btn">💀</button>
+    <button id="new-btn" class="icon-btn">🔄</button>
+  </div>
+</header>
 
-<div id="board"></div>
+<main>
+  <div id="board"></div>
+  <div id="keyboard"></div>
+</main>
 
-<p id="message"></p>
+<div id="toast"></div>
 
-<div id="keyboard"></div>
+<!-- POPUP -->
+<div id="popup-overlay" class="hidden">
+  <div id="popup">
+    <h2 id="popup-title"></h2>
+    <p id="popup-word"></p>
+    <button id="popup-close" class="btn">OK</button>
+  </div>
+</div>
+
+<!-- STATISTICHE -->
+<div id="stats-overlay" class="hidden">
+  <div id="stats-box">
+    <h2>Statistiche</h2>
+    <p>Partite: <span id="st-games"></span></p>
+    <p>Vittorie: <span id="st-wins"></span></p>
+    <p>Winrate: <span id="st-wr"></span>%</p>
+    <p>Streak: <span id="st-streak"></span></p>
+    <p>Best streak: <span id="st-best"></span></p>
+    <button id="stats-close" class="btn">Chiudi</button>
+  </div>
+</div>
 
 <script src="words_it.js"></script>
 <script src="script.js"></script>
-
 </body>
 </html>
