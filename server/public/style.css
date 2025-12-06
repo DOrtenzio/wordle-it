@@ -459,6 +459,78 @@ body {
   border-color: var(--accent-primary);
 }
 
+.game-chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-color);
+  margin-top: 10px;
+}
+
+.game-chat-input input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.game-chat-input input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.game-chat-input button {
+  padding: 8px 12px;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.game-chat-input button:hover {
+  background: var(--accent-primary);
+  opacity: 0.9;
+}
+
+.quick-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.quick-msg {
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.quick-msg:hover {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+}
+
+.quick-msg:active {
+  transform: translateY(0);
+}
+
 /* Gioco online */
 .game-top-bar {
   display: flex;
@@ -535,6 +607,52 @@ body {
 .player-score {
   font-weight: 600;
   color: var(--accent-secondary);
+}
+
+.game-chat {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-chat h4 {
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.chat-messages-small {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  min-height: 100px;
+  max-height: 200px;
+  padding-right: 8px;
+}
+
+.chat-messages-small::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages-small::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+}
+
+.chat-messages-small::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+.chat-message {
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
 }
 
 .game-area {
