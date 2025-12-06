@@ -16,12 +16,49 @@
     <button id="stats-btn" class="icon-btn">📊</button>
     <button id="hard-btn" class="icon-btn">💀</button>
     <button id="new-btn" class="icon-btn">🔄</button>
+    <button id="multiplayer-btn" class="icon-btn">👥</button>
   </div>
 </header>
 
 <main>
   <div id="board"></div>
   <div id="keyboard"></div>
+
+  <div id="multiplayer-container" class="hidden">
+  <div id="current-player">Giocatore 1</div>
+  
+  <div class="player-board-container" id="player1-container">
+    <div class="player-header">
+      <h3>👤 Giocatore 1</h3>
+      <div class="player-indicator" id="player1-indicator"></div>
+    </div>
+    <div class="board" id="player1-board"></div>
+  </div>
+  
+  <div class="player-board-container" id="player2-container">
+    <div class="player-header">
+      <h3>👤 Giocatore 2</h3>
+      <div class="player-indicator" id="player2-indicator"></div>
+    </div>
+    <div class="board" id="player2-board"></div>
+  </div>
+  
+  <div id="multiplayer-result" class="hidden"></div>
+  
+  <div id="multiplayer-words" class="hidden">
+    <h4>📝 Parole della partita</h4>
+    <div class="word-display">
+      <div class="word-item">
+        <div class="word-label">Giocatore 1</div>
+        <div class="word-value" id="multiplayer-word1"></div>
+      </div>
+      <div class="word-item">
+        <div class="word-label">Giocatore 2</div>
+        <div class="word-value" id="multiplayer-word2"></div>
+      </div>
+    </div>
+  </div>
+</div>
 </main>
 
 <div id="toast"></div>
