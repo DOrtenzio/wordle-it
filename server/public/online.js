@@ -67,17 +67,14 @@ class WordleOnline {
   }
   
   connectWebSocket() {
-    let wsUrl;
-
+     let wsUrl;
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      wsUrl = 'ws://localhost:8080';
+      wsUrl = 'ws://localhost:10000';
     } else {
       const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       wsUrl = protocol + window.location.host;
-      console.log('Produzione - URL WebSocket:', wsUrl);
     }
-
-    console.log('Connessione WebSocket a:', wsUrl);
+    console.log('🔗 Connessione WebSocket a:', wsUrl);
     this.socket = new WebSocket(wsUrl);
     
     this.socket.onopen = () => {
@@ -371,8 +368,14 @@ class WordleOnline {
     const btnStart = document.getElementById('btn-start-game');
     const players = document.querySelectorAll('.player-card');
     const allReady = Array.from(players).every(card => card.classList.contains('ready'));
-    
-    btnStart.disabled = !this.isHost || players.length < 2 || !allReady;
+    btnStart.disabled = !this.isHost || players.length < 1 || players.length > 4 || !allReady;
+    if (players.length > 4) {
+      btnStart.title = "Massimo 4 giocatori per stanza";
+    } else if (players.length < 1) {
+      btnStart.title = "Almeno 1 giocatore necessario";
+    } else {
+      btnStart.title = "";
+    }
   }
   
   startGame() {

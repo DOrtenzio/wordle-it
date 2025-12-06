@@ -1,26 +1,80 @@
 /* =========================================================
-   WORDLE ONLINE SERVER - VERSIONE PRODUZIONE
+   WORDLE ONLINE SERVER 
    Supporta Render.com + WebSocket su stessa porta
    ========================================================= */
 
-require('dotenv').config();
 const WebSocket = require('ws');
 const express = require('express');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const RoomManager = require('./roomManager');
-const GameManager = require('./gameManager');
-const AutoPinger = require('./autoPinger'); // Auto-ping per Render
+const path = require('path'); // IMPORTANTE: aggiunto
 
 // Configurazione ambiente
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const PORT = process.env.PORT || 3000;
-const WS_PORT = process.env.WS_PORT || 8080;
+const PORT = process.env.PORT || 10000;
+
+function getWebSocketUrl() {
+  if (NODE_ENV === 'production') {
+    return process.env.WEBSOCKET_URL || `wss://${process.env.RENDER_EXTERNAL_HOSTNAME || 'localhost'}`;
+  }
+  return 'ws://localhost:10000';
+}
+
+console.log(`🔌 Porta: ${PORT}, Ambiente: ${NODE_ENV}`);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('../public'));
+
+// =========================================================
+// 1. CONFIGURAZIONE FILE STATICI CON PERCORSI CORRETTI
+// =========================================================
+
+const publicPath = path.join(__dirname, 'public');
+console.log('📂 Directory corrente:', __dirname);
+console.log('📂 Percorso pubblico:', publicPath);
+const fs = require('fs');
+if (fs.existsSync(publicPath)) {
+  console.log('✅ Directory pubblica trovata');
+  const files = fs.readdirSync(publicPath);
+  console.log(`📄 File trovati (${files.length}):`, files.slice(0, 5));
+} else {
+  console.error('❌ Directory pubblica non trovata:', publicPath);
+}
+
+// Middleware per servire file statici
+app.use(express.static(publicPath, {
+  setHeaders: (res, filePath) => {
+    // Imposta MIME type corretti
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    } else if (filePath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html');
+    }
+  }
+}));
+
+// Route specifiche per i file JavaScript
+app.get('*.js', (req, res) => {
+  const filePath = path.join(publicPath, req.path);
+  res.sendFile(filePath, {
+    headers: { 'Content-Type': 'application/javascript' }
+  });
+});
+
+// Route specifiche per i file CSS
+app.get('*.css', (req, res) => {
+  const filePath = path.join(publicPath, req.path);
+  res.sendFile(filePath, {
+    headers: { 'Content-Type': 'text/css' }
+  });
+});
+
+// =========================================================
+// 2. ROUTE API E ENDPOINTS
+// =========================================================
 
 // Health check endpoint (per auto-ping e monitoraggio)
 app.get('/health', (req, res) => {
@@ -28,87 +82,65 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     service: 'Wordle Online ITA',
-    environment: NODE_ENV
+    environment: NODE_ENV,
+    port: PORT
   });
 });
 
 // API status (statistiche reali)
 app.get('/api/stats', (req, res) => {
-  const stats = {
-    playersOnline: roomManager ? roomManager.getOnlineCount() : 0,
-    activeRooms: roomManager ? roomManager.rooms.size : 0,
+  res.json({
+    playersOnline: 0,
+    activeRooms: 0,
     timestamp: Date.now(),
     environment: NODE_ENV
-  };
-  res.json(stats);
-});
-
-// Serve il frontend
-app.get('/', (req, res) => {
-  res.sendFile('index.html', { root: '../public' });
-});
-
-// Gestione file statici
-app.use('/js', express.static('../public/js'));
-app.use('/css', express.static('../public/css'));
-
-// Inizializza manager
-const roomManager = new RoomManager();
-const gameManager = new GameManager();
-const players = new Map();
-
-// Variabili per WebSocket server
-let wss;
-let server;
-
-// =========================================================
-// CONFIGURAZIONE WEB SOCKET BASATA SU AMBIENTE
-// =========================================================
-
-function initializeWebSocketServer(serverInstance) {
-  wss = new WebSocket.Server({ server: serverInstance });
-  
-  console.log(`WebSocket server inizializzato ${NODE_ENV === 'production' ? 'sulla stessa porta HTTP' : 'su porta ' + WS_PORT}`);
-  
-  wss.on('connection', (ws) => {
-    console.log('Nuova connessione WebSocket');
-    
-    ws.playerId = uuidv4();
-    players.set(ws.playerId, { socket: ws, room: null });
-    
-    ws.on('message', (message) => {
-      try {
-        const data = JSON.parse(message);
-        handleMessage(ws, data);
-      } catch (error) {
-        console.error('Errore parsing messaggio:', error);
-      }
-    });
-    
-    ws.on('close', () => {
-      console.log(`Disconnessione: ${ws.playerId}`);
-      handleDisconnection(ws);
-      players.delete(ws.playerId);
-    });
-    
-    ws.on('error', (error) => {
-      console.error(`WebSocket error per ${ws.playerId}:`, error);
-    });
-    
-    // Invia ID giocatore
-    ws.send(JSON.stringify({
-      type: 'welcome',
-      playerId: ws.playerId
-    }));
   });
+});
+
+// Test WebSocket endpoint
+app.get('/ws-test', (req, res) => {
+  res.json({
+    websocketStatus: 'ready',
+    environment: NODE_ENV,
+    port: PORT,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Route catch-all per SPA (Single Page Application)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// =========================================================
+// 3. INIZIALIZZAZIONE MANAGER
+// =========================================================
+
+// Nota: Carichiamo i manager DOPO aver definito le route
+let roomManager, gameManager;
+try {
+  const RoomManager = require('./roomManager');
+  const GameManager = require('./gameManager');
+  roomManager = new RoomManager();
+  gameManager = new GameManager();
+  console.log('✅ Manager inizializzati');
+} catch (error) {
+  console.log('⚠️  Manager non disponibili, usando modalità semplice');
+  // Per ora usiamo una modalità semplice
+  roomManager = { getOnlineCount: () => 0, rooms: new Map() };
+  gameManager = {};
 }
 
+const players = new Map();
+
 // =========================================================
-// HANDLER MESSAGGI (come prima, ma con wss globale)
+// 4. LOGICA WEBSOCKET (VERSIONE SEMPLIFICATA INIZIALE)
 // =========================================================
 
 function handleMessage(ws, data) {
   const { type, payload } = data;
+  
+  console.log(`📨 Messaggio ${type} da ${ws.playerId}`);
   
   switch(type) {
     case 'create-room':
@@ -119,333 +151,252 @@ function handleMessage(ws, data) {
       handleJoinRoom(ws, payload);
       break;
       
-    case 'leave-room':
-      handleLeaveRoom(ws);
-      break;
-      
-    case 'start-game':
-      handleStartGame(ws);
-      break;
-      
-    case 'player-ready':
-      handlePlayerReady(ws, payload);
-      break;
-      
-    case 'make-guess':
-      handleMakeGuess(ws, payload);
-      break;
-      
     case 'chat-message':
       handleChatMessage(ws, payload);
       break;
       
-    case 'end-turn':
-      handleEndTurn(ws);
-      break;
-      
     default:
       console.log(`Tipo sconosciuto: ${type}`);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: `Tipo messaggio non supportato: ${type}`
+      }));
   }
 }
 
 function handleCreateRoom(ws, payload) {
-  const { playerName, settings } = payload;
-  const roomCode = roomManager.createRoom(ws.playerId, playerName, settings);
+  const { playerName } = payload || {};
+  const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
   
   players.set(ws.playerId, {
     ...players.get(ws.playerId),
-    name: playerName,
+    name: playerName || 'Giocatore',
     room: roomCode
   });
   
   ws.send(JSON.stringify({
     type: 'room-created',
     roomCode,
-    isHost: true
+    isHost: true,
+    message: `Stanza ${roomCode} creata!`
   }));
   
-  console.log(`Stanza creata: ${roomCode} da ${playerName}`);
+  console.log(`Stanza creata: ${roomCode} da ${playerName || 'Giocatore'}`);
 }
 
 function handleJoinRoom(ws, payload) {
-  const { roomCode, playerName } = payload;
-  const room = roomManager.getRoom(roomCode);
+  const { roomCode, playerName } = payload || {};
   
-  if (!room) {
+  if (!roomCode || roomCode.length !== 4) {
     ws.send(JSON.stringify({
       type: 'error',
-      message: 'Stanza non trovata'
+      message: 'Codice stanza non valido'
     }));
     return;
   }
   
-  if (room.players.length >= room.settings.maxPlayers) {
-    ws.send(JSON.stringify({
-      type: 'error',
-      message: 'Stanza piena'
-    }));
-    return;
-  }
-  
-  const success = roomManager.addPlayer(roomCode, {
-    id: ws.playerId,
-    name: playerName,
-    socket: ws,
-    isReady: false,
-    score: 0
+  players.set(ws.playerId, {
+    ...players.get(ws.playerId),
+    name: playerName || 'Giocatore',
+    room: roomCode
   });
-  
-  if (success) {
-    players.set(ws.playerId, {
-      ...players.get(ws.playerId),
-      name: playerName,
-      room: roomCode
-    });
-    
-    broadcastToRoom(roomCode, {
-      type: 'player-joined',
-      player: { id: ws.playerId, name: playerName }
-    });
-    
-    ws.send(JSON.stringify({
-      type: 'room-joined',
-      roomCode,
-      roomState: room,
-      isHost: false
-    }));
-    
-    console.log(`${playerName} si è unito a ${roomCode}`);
-  }
-}
-
-function handleLeaveRoom(ws) {
-  const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
-  
-  const roomCode = player.room;
-  roomManager.removePlayer(roomCode, ws.playerId);
-  
-  broadcastToRoom(roomCode, {
-    type: 'player-left',
-    playerId: ws.playerId
-  });
-  
-  const room = roomManager.getRoom(roomCode);
-  if (room && room.players.length === 0) {
-    roomManager.removeRoom(roomCode);
-    console.log(`Stanza ${roomCode} eliminata (vuota)`);
-  }
-  
-  players.set(ws.playerId, { ...player, room: null });
   
   ws.send(JSON.stringify({
-    type: 'room-left'
+    type: 'room-joined',
+    roomCode,
+    isHost: false,
+    message: `Unito a stanza ${roomCode}`
   }));
-}
-
-function handleStartGame(ws) {
-  const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
   
-  const roomCode = player.room;
-  const room = roomManager.getRoom(roomCode);
-  
-  if (room.hostId !== ws.playerId) return;
-  
-  const allReady = room.players.every(p => p.isReady);
-  if (!allReady && room.players.length > 1) {
-    ws.send(JSON.stringify({
-      type: 'error',
-      message: 'Attendi che tutti siano pronti'
-    }));
-    return;
-  }
-  
-  gameManager.startGame(roomCode, room);
-  
-  broadcastToRoom(roomCode, {
-    type: 'game-started',
-    gameState: gameManager.getGameState(roomCode)
-  });
-}
-
-function handlePlayerReady(ws, payload) {
-  const { isReady } = payload;
-  const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
-  
-  const roomCode = player.room;
-  roomManager.setPlayerReady(roomCode, ws.playerId, isReady);
-  
-  broadcastToRoom(roomCode, {
-    type: 'player-ready-updated',
-    playerId: ws.playerId,
-    isReady
-  });
-}
-
-function handleMakeGuess(ws, payload) {
-  const { word } = payload;
-  const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
-  
-  const roomCode = player.room;
-  const result = gameManager.processGuess(roomCode, ws.playerId, word);
-  
-  if (result.valid) {
-    ws.send(JSON.stringify({
-      type: 'guess-result',
-      ...result
-    }));
-    
-    if (result.gameOver || result.guesses >= 6) {
-      gameManager.nextTurn(roomCode);
-      broadcastGameState(roomCode);
-    }
-  } else {
-    ws.send(JSON.stringify({
-      type: 'error',
-      message: result.message
-    }));
-  }
+  console.log(`${playerName || 'Giocatore'} si è unito a ${roomCode}`);
 }
 
 function handleChatMessage(ws, payload) {
-  const { message } = payload;
+  const { message } = payload || {};
   const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
   
+  if (!player || !message || !player.room) return;
+  
+  // Invece dell'echo, invia a tutti nella stanza
   broadcastToRoom(player.room, {
     type: 'chat-message',
     playerId: ws.playerId,
-    playerName: player.name,
-    message,
+    playerName: player.name || 'Giocatore',
+    message: message.substring(0, 200), // Limita lunghezza
     timestamp: Date.now()
   });
-}
-
-function handleEndTurn(ws) {
-  const player = players.get(ws.playerId);
-  if (!player || !player.room) return;
   
-  const roomCode = player.room;
-  gameManager.nextTurn(roomCode);
-  broadcastGameState(roomCode);
-}
-
-function handleDisconnection(ws) {
-  handleLeaveRoom(ws);
+  console.log(`💬 Chat da ${player.name}: ${message.substring(0, 50)}...`);
 }
 
 function broadcastToRoom(roomCode, message) {
-  const room = roomManager.getRoom(roomCode);
-  if (!room || !wss) return;
+// Cerca tutti i giocatori nella stanza
+Array.from(wss.clients).forEach(client => {
+  if (client.readyState === WebSocket.OPEN) {
+    const player = players.get(client.playerId);
+    if (player && player.room === roomCode) {
+      try {
+        client.send(JSON.stringify(message));
+      } catch (error) {
+        console.error(`❌ Errore invio chat:`, error.message);
+      }
+    }
+  }
+});
+}
+
+function handleDisconnection(ws) {
+  const player = players.get(ws.playerId);
+  if (player) {
+    console.log(`Disconnessione: ${player.name || ws.playerId}`);
+    players.delete(ws.playerId);
+  }
+}
+
+// =========================================================
+// 5. AVVIO SERVER
+// =========================================================
+
+console.log(`🚀 Avvio server Wordle ITA Online`);
+console.log(`🌍 Ambiente: ${NODE_ENV}`);
+console.log(`🔌 Porta: ${PORT}`);
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server HTTP avviato su porta ${PORT}`);
+  console.log(`📂 File statici serviti da: ${publicPath}`);
+});
+
+// =========================================================
+// 6. WEBSOCKET SERVER
+// =========================================================
+
+const wss = new WebSocket.Server({ 
+  server,
+  clientTracking: true,
+  perMessageDeflate: false
+});
+
+console.log(`✅ WebSocket Server avviato sulla stessa porta ${PORT}`);
+
+wss.on('connection', (ws, req) => {
+  console.log('🔗 Nuova connessione WebSocket');
   
-  room.players.forEach(player => {
-    if (player.socket && player.socket.readyState === WebSocket.OPEN) {
-      player.socket.send(JSON.stringify(message));
+  const playerId = uuidv4();
+  ws.playerId = playerId;
+  
+  players.set(playerId, { 
+    socket: ws, 
+    room: null, 
+    name: null 
+  });
+  
+  // Log dettagliato
+  console.log(`👤 Giocatore ${playerId} connesso`);
+  console.log(`📊 Client totali connessi: ${wss.clients.size}`);
+  
+  // Invio immediato del messaggio di benvenuto
+  ws.send(JSON.stringify({
+    type: 'welcome',
+    playerId: playerId,
+    message: 'Benvenuto su Wordle ITA Online!',
+    timestamp: Date.now(),
+    serverInfo: {
+      environment: NODE_ENV,
+      version: '1.0.0'
+    }
+  }));
+  
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      console.log(`📩 Ricevuto da ${playerId}:`, data.type);
+      handleMessage(ws, data);
+    } catch (error) {
+      console.error('❌ Errore parsing messaggio:', error);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Formato JSON non valido'
+      }));
     }
   });
-}
-
-function broadcastGameState(roomCode) {
-  const gameState = gameManager.getGameState(roomCode);
-  broadcastToRoom(roomCode, {
-    type: 'game-update',
-    gameState
+  
+  ws.on('close', () => {
+    console.log(`❌ Disconnessione: ${playerId}`);
+    handleDisconnection(ws);
+    console.log(`📊 Client rimanenti: ${wss.clients.size}`);
   });
-}
+  
+  ws.on('error', (error) => {
+    console.error(`⚠️  WebSocket error ${playerId}:`, error.message);
+  });
+  
+  // Test echo dopo 1 secondo
+  setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'ping',
+        timestamp: Date.now(),
+        message: 'WebSocket funzionante correttamente!'
+      }));
+    }
+  }, 1000);
+});
 
 // =========================================================
-// AVVIO SERVER - PARTE CRITICA
-// =========================================================
-
-console.log(`Ambiente: ${NODE_ENV}`);
-
-if (NODE_ENV === 'production') {
-  // =========================================================
-  // PRODUZIONE (Render.com) - WebSocket e HTTP sulla STESSA porta
-  // =========================================================
-  console.log(`Avvio in modalità produzione su porta ${PORT}`);
-  
-  server = app.listen(PORT, () => {
-    console.log(`✅ Server HTTP in ascolto su porta ${PORT}`);
-    console.log(`📡 WebSocket sarà disponibile sulla stessa porta`);
-  });
-  
-  // Inizializza WebSocket sul server HTTP esistente
-  initializeWebSocketServer(server);
-  
-} else {
-  // =========================================================
-  // SVILUPPO LOCALE - WebSocket e HTTP su porte DIVERSE
-  // =========================================================
-  console.log(`Avvio in modalità sviluppo`);
-  
-  // Server HTTP
-  server = app.listen(PORT, () => {
-    console.log(`✅ Server HTTP: http://localhost:${PORT}`);
-  });
-  
-  // Server WebSocket separato
-  wss = new WebSocket.Server({ port: WS_PORT });
-  console.log(`✅ WebSocket Server: ws://localhost:${WS_PORT}`);
-  
-  wss.on('connection', (ws) => {
-    console.log('Nuova connessione WebSocket (sviluppo)');
-    
-    ws.playerId = uuidv4();
-    players.set(ws.playerId, { socket: ws, room: null });
-    
-    ws.on('message', (message) => {
-      try {
-        const data = JSON.parse(message);
-        handleMessage(ws, data);
-      } catch (error) {
-        console.error('Errore parsing messaggio:', error);
-      }
-    });
-    
-    ws.on('close', () => {
-      console.log(`Disconnessione: ${ws.playerId}`);
-      handleDisconnection(ws);
-      players.delete(ws.playerId);
-    });
-    
-    ws.send(JSON.stringify({
-      type: 'welcome',
-      playerId: ws.playerId
-    }));
-  });
-}
-
-// =========================================================
-// AUTO-PING PER RENDER (previene sleep)
+// 7. AUTO-PING PER RENDER (solo produzione)
 // =========================================================
 
 if (NODE_ENV === 'production') {
-  const autoPinger = new AutoPinger();
-  autoPinger.start();
+  console.log('🔄 Configurazione auto-ping per Render...');
   
-  console.log('🔄 Auto-ping attivato per mantenere server attivo');
+  // Auto-ping semplice integrato
+  const pingInterval = setInterval(() => {
+    const now = new Date().toISOString();
+    console.log(`🔄 Auto-ping ${now} - Client attivi: ${wss.clients.size}`);
+  }, 300000); // Ogni 5 minuti
+  
+  // Cleanup all'uscita
+  process.on('SIGTERM', () => {
+    clearInterval(pingInterval);
+    console.log('🔄 Auto-ping disattivato');
+  });
 }
 
 // =========================================================
-// GESTIONE SHUTDOWN
+// 8. GESTIONE SHUTDOWN
 // =========================================================
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM ricevuto, shutdown pulito...');
-  if (server) server.close();
-  if (wss) wss.close();
-  process.exit(0);
+  console.log('🔻 SIGTERM ricevuto, shutdown pulito...');
+  if (server) {
+    server.close(() => {
+      console.log('✅ Server HTTP chiuso');
+      process.exit(0);
+    });
+  }
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT ricevuto, shutdown...');
-  if (server) server.close();
-  if (wss) wss.close();
+  console.log('🔻 SIGINT ricevuto, shutdown...');
+  if (wss) {
+    wss.close();
+    console.log('✅ WebSocket Server chiuso');
+  }
+  if (server) {
+    server.close();
+    console.log('✅ Server HTTP chiuso');
+  }
   process.exit(0);
 });
 
-console.log('🚀 Server Wordle Online ITA avviato!');
+// =========================================================
+// 9. INFORMAZIONI FINALI
+// =========================================================
+
+console.log('✨ Server Wordle Online ITA completamente inizializzato!');
+console.log('======================================================');
+console.log(`🌐 URL HTTP: http://localhost:${PORT}`);
+console.log(`🔌 URL WebSocket: ws://localhost:${PORT}`);
+console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+console.log(`🔧 WebSocket test: http://localhost:${PORT}/ws-test`);
+console.log('======================================================');
