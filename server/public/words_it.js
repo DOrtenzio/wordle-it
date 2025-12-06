@@ -5000,3 +5000,6 @@ const WORDS_IT = [
 "onidu",
 "voule"
 ];
+
+module.exports = { WORDS_IT };
+module.exports.WORDS_IT = WORDS_IT;
