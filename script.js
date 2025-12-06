@@ -1,61 +1,175 @@
-let word = WORDS_IT[Math.floor(Math.random() * WORDS_IT.length)].toLowerCase();
+let word = WORDS_IT[Math.floor(Math.random() * WORDS_IT.length)];
 let attempts = 0;
 const maxAttempts = 6;
+let currentInput = "";
 
 const board = document.getElementById("board");
-const input = document.getElementById("guess-input");
-const btn = document.getElementById("guess-btn");
 const message = document.getElementById("message");
+const keyboard = document.getElementById("keyboard");
 
-// crea caselle
+// CREA GRIGLIA
 for (let i = 0; i < maxAttempts * 5; i++) {
   const tile = document.createElement("div");
   tile.classList.add("tile");
   board.appendChild(tile);
 }
 
-btn.addEventListener("click", guess);
+// CREA TASTIERA VIRTUALE
+const keyboardLayout = [
+  "qwertyuiop",
+  "asdfghjkl",
+  "↩zxcvbnm⌫"
+];
 
-function guess() {
-  let attempt = input.value.toLowerCase().trim();
+keyboardLayout.forEach(row => {
+  const rowDiv = document.createElement("div");
+  rowDiv.classList.add("key-row");
 
-  if (attempt.length !== 5) {
+  row.split("").forEach(char => {
+    const key = document.createElement("button");
+    key.classList.add("key");
+
+    if (char === "↩" || char === "⌫") {
+      key.classList.add("special");
+    }
+
+    key.textContent = char;
+    key.onclick = () => handleKey(char);
+
+    rowDiv.appendChild(key);
+  });
+
+  keyboard.appendChild(rowDiv);
+});
+
+// HANDLER TASTIERA
+document.addEventListener("keydown", e => {
+  if (e.key.match(/^[a-zA-Z]$/) && currentInput.length < 5) {
+    addLetter(e.key);
+  }
+  if (e.key === "Backspace") removeLetter();
+  if (e.key === "Enter") submitWord();
+});
+
+function handleKey(char) {
+  if (char === "⌫") removeLetter();
+  else if (char === "↩") submitWord();
+  else if (currentInput.length < 5) addLetter(char);
+}
+
+function addLetter(letter) {
+  letter = letter.toLowerCase();
+  if (currentInput.length === 5) return;
+
+  let tile = board.children[attempts * 5 + currentInput.length];
+  tile.textContent = letter;
+  tile.classList.add("pop");
+
+  setTimeout(() => tile.classList.remove("pop"), 150);
+
+  currentInput += letter;
+}
+
+function removeLetter() {
+  if (currentInput.length === 0) return;
+
+  currentInput = currentInput.slice(0, -1);
+  let tile = board.children[attempts * 5 + currentInput.length];
+  tile.textContent = "";
+}
+
+function submitWord() {
+  if (currentInput.length < 5) {
     message.textContent = "La parola deve avere 5 lettere.";
     return;
   }
 
-  if (!WORDS_IT.includes(attempt)) {
-    message.textContent = "Parola non valida nel dizionario.";
+  if (!WORDS_IT.includes(currentInput)) {
+    message.textContent = "Parola non nel dizionario.";
     return;
   }
 
-  const offset = attempts * 5;
+  checkWord();
+}
 
+function checkWord() {
+  const guess = currentInput;
+  const rowStart = attempts * 5;
+
+  let wordCopy = word.split("");
+
+  // flip animato
   for (let i = 0; i < 5; i++) {
-    const tile = board.children[offset + i];
-    tile.textContent = attempt[i];
+    let tile = board.children[rowStart + i];
 
-    if (attempt[i] === word[i]) {
-      tile.classList.add("correct");
-    } else if (word.includes(attempt[i])) {
-      tile.classList.add("present");
-    } else {
-      tile.classList.add("absent");
+    setTimeout(() => {
+      tile.classList.add("flip");
+
+      let letter = guess[i];
+
+      if (letter === word[i]) {
+        tile.classList.add("correct");
+        updateKeyboard(letter, "correct");
+        wordCopy[i] = null;
+      }
+    }, i * 300);
+  }
+
+  // seconda passata per presenti/assenti
+  setTimeout(() => {
+    for (let i = 0; i < 5; i++) {
+      let tile = board.children[rowStart + i];
+      let letter = guess[i];
+
+      if (!tile.classList.contains("correct")) {
+        if (wordCopy.includes(letter)) {
+          tile.classList.add("present");
+          updateKeyboard(letter, "present");
+          wordCopy[wordCopy.indexOf(letter)] = null;
+        } else {
+          tile.classList.add("absent");
+          updateKeyboard(letter, "absent");
+        }
+      }
     }
+
+    finalizeAttempt(guess);
+
+  }, 1600);
+
+}
+
+function updateKeyboard(letter, state) {
+  const key = [...document.querySelectorAll(".key")]
+    .find(k => k.textContent.toLowerCase() === letter);
+
+  if (key) {
+    if (state === "correct") key.classList.add("correct");
+    else if (state === "present" && !key.classList.contains("correct"))
+      key.classList.add("present");
+    else if (!key.classList.contains("correct") &&
+             !key.classList.contains("present"))
+      key.classList.add("absent");
+  }
+}
+
+function finalizeAttempt(guess) {
+  if (guess === word) {
+    message.textContent = "Bravo! La parola era: " + word.toUpperCase();
+    disableInput();
+    return;
   }
 
   attempts++;
-
-  if (attempt === word) {
-    message.textContent = "Bravo! La parola era: " + word;
-    btn.disabled = true;
-    return;
-  }
+  currentInput = "";
 
   if (attempts === maxAttempts) {
-    message.textContent = "Hai perso! La parola era: " + word;
-    btn.disabled = true;
+    message.textContent = "Hai perso! La parola era: " + word.toUpperCase();
+    disableInput();
   }
+}
 
-  input.value = "";
+function disableInput() {
+  document.removeEventListener("keydown", handleKey);
+  keyboard.style.opacity = 0.4;
 }
