@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wordle ITA Online</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Schermata iniziale -->
+  <div id="start-screen" class="screen active">
+    <div class="container">
+      <header class="game-header">
+        <h1><i class="fas fa-globe"></i> WORDLE ITA <span class="online-badge">ONLINE</span></h1>
+        <p class="subtitle">Gioca a Wordle con amici in tempo reale</p>
+      </header>
+      
+      <div class="main-menu">
+        <div class="player-info">
+          <div class="input-group">
+            <label for="player-name"><i class="fas fa-user"></i> Il tuo nome</label>
+            <input type="text" id="player-name" placeholder="Es: Mario" maxlength="12">
+          </div>
+          <div class="avatar-selector">
+            <p>Scegli un avatar:</p>
+            <div class="avatars">
+              <div class="avatar selected" data-avatar="1">👤</div>
+              <div class="avatar" data-avatar="2">🧑‍💻</div>
+              <div class="avatar" data-avatar="3">👨‍🎨</div>
+              <div class="avatar" data-avatar="4">👩‍🔬</div>
+              <div class="avatar" data-avatar="5">🧙</div>
+              <div class="avatar" data-avatar="6">🦸</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="menu-options">
+          <button id="btn-singleplayer" class="btn-large">
+            <i class="fas fa-user"></i> Gioca da Solo
+          </button>
+          
+          <button id="btn-create-room" class="btn-large btn-primary">
+            <i class="fas fa-plus-circle"></i> Crea Stanza Online
+          </button>
+          
+          <div class="join-room">
+            <input type="text" id="room-code-input" placeholder="Codice stanza (es: ABCD)" maxlength="4" style="text-transform:uppercase">
+            <button id="btn-join-room" class="btn-large">
+              <i class="fas fa-sign-in-alt"></i> Unisciti
+            </button>
+          </div>
+          
+          <div class="how-to-play-wrapper">
+            <button id="btn-how-to-play" class="btn-how-to-play">
+              <div class="how-to-play-content">
+                <div class="how-to-play-icon">
+                  <i class="fas fa-question-circle"></i>
+                </div>
+                <div class="how-to-play-text">
+                  <div class="how-to-play-title">Come si Gioca</div>
+                  <div class="how-to-play-subtitle">Guida rapida & regole</div>
+                </div>
+              </div>
+              <div class="how-to-play-arrow">
+                <i class="fas fa-chevron-right"></i>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        <div class="stats-preview">
+          <div class="stat">
+            <span class="stat-value" id="online-count">0</span>
+            <span class="stat-label">Giocatori online</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="rooms-count">0</span>
+            <span class="stat-label">Stanze attive</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Lobby / Attesa giocatori -->
+  <div id="lobby-screen" class="screen">
+    <div class="container">
+      <header class="lobby-header">
+        <h2><i class="fas fa-door-open"></i> Stanza: <span id="lobby-room-code">ABCD</span></h2>
+        <button id="btn-leave-lobby" class="btn-small"><i class="fas fa-sign-out-alt"></i> Esci</button>
+      </header>
+      
+      <div class="lobby-content">
+        <div class="players-list">
+          <h3><i class="fas fa-users"></i> Giocatori (<span id="player-count">1</span>/4)</h3>
+          <div id="players-container" class="players-container">
+            <!-- Giocatori verranno aggiunti dinamicamente -->
+          </div>
+          
+          <div class="lobby-controls">
+            <div class="ready-toggle">
+              <input type="checkbox" id="ready-checkbox">
+              <label for="ready-checkbox">Pronto</label>
+            </div>
+            
+            <button id="btn-start-game" class="btn-large btn-primary" disabled>
+              <i class="fas fa-play"></i> Inizia Partita
+            </button>
+            
+            <div class="room-share">
+              <p>Condividi questo codice per invitare amici:</p>
+              <div class="share-code">
+                <code id="share-room-code">ABCD</code>
+                <button id="btn-copy-code" class="btn-small">
+                  <i class="far fa-copy"></i> Copia
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="chat-box">
+          <div class="chat-header">
+            <h3><i class="fas fa-comments"></i> Chat</h3>
+          </div>
+          <div id="chat-messages" class="chat-messages">
+            <!-- Messaggi chat -->
+          </div>
+          <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Scrivi un messaggio...">
+            <button id="btn-send-chat"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Schermata di gioco online -->
+  <div id="game-screen" class="screen">
+    <div class="game-container">
+      <!-- Header gioco -->
+      <header class="game-top-bar">
+        <div class="room-info">
+          <span class="room-code-badge" id="game-room-code">ABCD</span>
+          <span class="round-info">Round <span id="current-round">1</span>/3</span>
+        </div>
+        
+        <div class="turn-info">
+          <div class="turn-indicator">
+            <i class="fas fa-hourglass-half"></i>
+            <span>Turno di: <strong id="current-player-name">Mario</strong></span>
+          </div>
+          <div class="timer" id="turn-timer">
+            <i class="fas fa-clock"></i> <span>120</span>s
+          </div>
+        </div>
+        
+        <div class="game-controls">
+          <button id="btn-leave-game" class="btn-small">
+            <i class="fas fa-sign-out-alt"></i> Esci
+          </button>
+        </div>
+      </header>
+      
+      <div class="game-main">
+        <!-- Scoreboard laterale -->
+        <div class="scoreboard-sidebar">
+          <h3><i class="fas fa-trophy"></i> Classifica</h3>
+          <div id="scoreboard" class="scoreboard">
+            <!-- Giocatori con punteggio -->
+          </div>
+          
+          <div class="game-chat">
+            <h4><i class="fas fa-comment"></i> Chat Rapida</h4>
+            <div id="game-chat-messages" class="chat-messages-small"></div>
+            <div class="quick-chat">
+              <button class="quick-msg" data-msg="Forza!">💪 Forza!</button>
+              <button class="quick-msg" data-msg="Quasi!">🔥 Quasi!</button>
+              <button class="quick-msg" data-msg="Bella!">👏 Bella!</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Area gioco principale -->
+        <div class="game-area">
+          <!-- Board giocatore corrente -->
+          <div class="player-board-container">
+            <h3>Le tue parole</h3>
+            <div id="player-board" class="board">
+              <!-- Board verrà generata dinamicamente -->
+            </div>
+          </div>
+          
+          <!-- Tastiera -->
+          <div id="keyboard" class="keyboard">
+            <!-- Tastiera verrà generata dinamicamente -->
+          </div>
+          
+          <!-- Controlli gioco -->
+          <div class="game-controls-bottom">
+            <button id="btn-submit-word" class="btn-large" disabled>
+              <i class="fas fa-paper-plane"></i> Invia Parola
+            </button>
+            <button id="btn-clear-word" class="btn-large">
+              <i class="fas fa-backspace"></i> Cancella
+            </button>
+            <button id="btn-skip-turn" class="btn-large btn-secondary" disabled>
+              <i class="fas fa-forward"></i> Salta Turno
+            </button>
+          </div>
+        </div>
+        
+        <!-- Board altri giocatori (solo visive) -->
+        <div class="opponents-board">
+          <h3><i class="fas fa-eye"></i> Altri Giocatori</h3>
+          <div id="opponents-container" class="opponents-container">
+            <!-- Board avversari -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Schermata risultati -->
+  <div id="results-screen" class="screen">
+    <div class="container results-container">
+      <div class="results-header">
+        <h2><i class="fas fa-flag-checkered"></i> Risultati Round</h2>
+        <div class="round-info">Round <span id="results-round">1</span>/3</div>
+      </div>
+      
+      <div class="results-content">
+        <div class="winner-announcement" id="winner-announcement">
+          <div class="winner-avatar">🏆</div>
+          <h3 id="winner-name">Mario vince il round!</h3>
+          <div class="winner-score">Punteggio: <span id="winner-score">850</span></div>
+        </div>
+        
+        <div class="detailed-results">
+          <h4>Classifica</h4>
+          <div id="results-scoreboard" class="results-scoreboard">
+            <!-- Classifica dettagliata -->
+          </div>
+          
+          <div class="word-reveal">
+            <p>La parola era: <strong id="results-word">PAROLA</strong></p>
+          </div>
+        </div>
+        
+        <div class="results-controls">
+          <button id="btn-next-round" class="btn-large btn-primary">
+            <i class="fas fa-forward"></i> Prossimo Round
+          </button>
+          <button id="btn-return-lobby" class="btn-large">
+            <i class="fas fa-home"></i> Torna alla Lobby
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Schermata gioco singolo -->
+  <div id="singleplayer-screen" class="screen">
+    <div class="container">
+      <header class="sp-header">
+        <h2><i class="fas fa-user"></i> Modalità Singolo</h2>
+        <div class="sp-controls">
+          <button id="btn-sp-theme" class="icon-btn">🌓</button>
+          <button id="btn-sp-stats" class="icon-btn">📊</button>
+          <button id="btn-sp-new" class="icon-btn">🔄</button>
+          <button id="btn-sp-back" class="icon-btn">←</button>
+        </div>
+      </header>
+      
+      <div class="sp-game">
+        <div id="sp-board" class="sp-board"></div>
+        <div id="sp-keyboard" class="sp-keyboard"></div>
+      </div>
+      
+      <div class="sp-toast" id="sp-toast"></div>
+    </div>
+  </div>
+  
+  <!-- Popup istruzioni -->
+  <div id="instructions-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-graduation-cap"></i> Come Giocare</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="instruction-step">
+          <h4>🎯 Obiettivo</h4>
+          <p>Indovina la parola segreta di 5 lettere in 6 tentativi.</p>
+        </div>
+        
+        <div class="instruction-step">
+          <h4>🎨 Colorazione</h4>
+          <div class="color-examples">
+            <div class="color-example-row">
+              <div class="color-example correct">A</div>
+              <span class="color-description">Lettera corretta e posizione giusta</span>
+            </div>
+            
+            <div class="color-example-row">
+              <div class="color-example present">B</div>
+              <span class="color-description">Lettera presente ma posizione sbagliata</span>
+            </div>
+            
+            <div class="color-example-row">
+              <div class="color-example absent">C</div>
+              <span class="color-description">Lettera non presente nella parola</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="instruction-step">
+          <h4>👥 Modalità Online</h4>
+          <ul>
+            <li>2-4 giocatori per stanza</li>
+            <li>Turni di 2 minuti ciascuno</li>
+            <li>Chi indovina con meno tentativi vince più punti</li>
+            <li>Si gioca a più round (default: 3)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Popup statistiche -->
+  <div id="stats-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-chart-line"></i> Statistiche</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="stat-games">0</div>
+            <div class="stat-label">Partite</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-wins">0</div>
+            <div class="stat-label">Vittorie</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-streak">0</div>
+            <div class="stat-label">Streak</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-best">0</div>
+            <div class="stat-label">Record</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toast notifications -->
+  <div id="toast" class="toast"></div>
+  
+  <!-- Scripts -->
+  <script src="words_it.js"></script>
+  <script src="game.js"></script>
+  <script src="online.js"></script>
+  <script src="singleplayer.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
