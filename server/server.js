@@ -73,6 +73,10 @@ app.get('/ws-test', (req, res) => {
   });
 });
 
+app.get('/minigames', (req, res) => {
+  res.sendFile(path.join(publicPath, 'minigames.html'));
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
 });

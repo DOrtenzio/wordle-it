@@ -63,6 +63,9 @@ class WordleOnline {
         case 'btn-send-game-chat': this.sendGameChatMessage(); break;
         case 'btn-next-round': this.nextRound(); break;
         case 'btn-return-lobby': this.returnToLobby(); break;
+        case 'btn-minigames':
+          window.open('minigames.html', '_self');
+          break;
         default:
           const action = btn.dataset.action;
           if (action) {

@@ -47,7 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
     "Straordinario! Continua così! ⭐",
     "Quack quack! Sono fiero di te! 🦆",
     "Le papere credono in te! 🦆💕",
-    "Vola alto come una papera! 🦆✈️"
+    "Vola alto come una papera! 🦆✈️",
+    "Moneoo o Ooenom questo è il dilemma! 💀🥸"
   ];
   
   document.addEventListener('DOMContentLoaded', function() {
@@ -133,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Scegli frase casuale
     const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
     duckSpeech.textContent = randomQuote;
+    console.log("Frase: "+randomQuote);
     
     // Mostra la papera
     duckContainer.classList.add('active');

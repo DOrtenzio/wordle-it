@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minigiochi & Quiz | Mordle ITA</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="minigames.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header fisso -->
+  <header class="minigames-header">
+    <div class="container">
+      <div class="header-content">
+        <button class="back-btn" id="back-to-main">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1><i class="fas fa-gamepad"></i> Minigiochi & Quiz</h1>
+        <div class="header-stats">
+          <div class="stat-badge">
+            <i class="fas fa-coins"></i>
+            <span id="total-coins">0</span>
+          </div>
+          <div class="stat-badge">
+            <i class="fas fa-star"></i>
+            <span id="total-stars">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="minigames-container">
+    <!-- Sezione giochi in evidenza -->
+    <section class="featured-games">
+      <h2 class="section-title">
+        <i class="fas fa-fire"></i> Giochi in Evidenza
+        <span class="title-badge">NEW</span>
+      </h2>
+      
+      <div class="games-grid">
+        <!-- Gioco 1: Indovina l'Angolo -->
+        <div class="game-card featured" data-game="angle">
+          <div class="game-icon">
+            <i class="fas fa-shapes"></i>
+          </div>
+          <div class="game-info">
+            <h3>Indovina l'Angolo</h3>
+            <p>Stima l'angolo in gradi. Sfida la tua percezione visiva!</p>
+            <div class="game-stats">
+              <span class="difficulty easy">Facile</span>
+              <span class="players"><i class="fas fa-users"></i> 1</span>
+            </div>
+          </div>
+          <button class="play-btn">
+            <i class="fas fa-play"></i> Gioca
+          </button>
+        </div>
+
+        <!-- Gioco 2: Memory Matematico -->
+        <div class="game-card featured" data-game="math-memory">
+          <div class="game-icon">
+            <i class="fas fa-brain"></i>
+          </div>
+          <div class="game-info">
+            <h3>Memory Matematico</h3>
+            <p>Abbina operazioni con risultati. Allena la memoria e il calcolo!</p>
+            <div class="game-stats">
+              <span class="difficulty medium">Medio</span>
+              <span class="players"><i class="fas fa-users"></i> 1-2</span>
+            </div>
+          </div>
+          <button class="play-btn">
+            <i class="fas fa-play"></i> Gioca
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sezione tutti i giochi -->
+    <section class="all-games">
+      <h2 class="section-title">
+        <i class="fas fa-th-large"></i> Tutti i Giochi
+      </h2>
+      
+      <div class="games-grid">
+        <!-- Gioco 3: Quiz Italiano -->
+        <div class="game-card" data-game="quiz-italiano">
+          <div class="game-icon">
+            <i class="fas fa-flag"></i>
+          </div>
+          <div class="game-info">
+            <h3>Quiz Italiano</h3>
+            <p>Domande su grammatica, cultura e tradizioni italiane</p>
+            <div class="game-stats">
+              <span class="difficulty easy">Facile</span>
+              <span class="score"><i class="fas fa-trophy"></i> Record: 0</span>
+            </div>
+          </div>
+          <button class="play-btn">
+            <i class="fas fa-play"></i> Gioca
+          </button>
+        </div>
+
+        <!-- Gioco 4: Velocità Digitale -->
+        <div class="game-card" data-game="typing-speed">
+          <div class="game-icon">
+            <i class="fas fa-keyboard"></i>
+          </div>
+          <div class="game-info">
+            <h3>Velocità Digitale</h3>
+            <p>Digita le parole il più velocemente possibile. Testa la tua velocità!</p>
+            <div class="game-stats">
+              <span class="difficulty hard">Difficile</span>
+              <span class="score"><i class="fas fa-bolt"></i> WPM: 0</span>
+            </div>
+          </div>
+          <button class="play-btn">
+            <i class="fas fa-play"></i> Gioca
+          </button>
+        </div>
+
+        <!-- Gioco 5: Puzzle Parole -->
+        <div class="game-card" data-game="word-puzzle">
+          <div class="game-icon">
+            <i class="fas fa-puzzle-piece"></i>
+          </div>
+          <div class="game-info">
+            <h3>Puzzle Parole</h3>
+            <p>Ricomponi le parole mischiate. Sfida il tuo vocabolario!</p>
+            <div class="game-stats">
+              <span class="difficulty medium">Medio</span>
+              <span class="score"><i class="fas fa-check-circle"></i> Completati: 0</span>
+            </div>
+          </div>
+          <button class="play-btn">
+            <i class="fas fa-play"></i> Gioca
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sezione statistiche -->
+    <section class="stats-section">
+      <h2 class="section-title">
+        <i class="fas fa-chart-bar"></i> Le Tue Statistiche
+      </h2>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="total-time">0h</div>
+            <div class="stat-label">Tempo di gioco</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-gamepad"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="games-played">0</div>
+            <div class="stat-label">Partite giocate</div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-percentage"></i>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value" id="win-rate">0%</div>
+            <div class="stat-label">Tasso vittorie</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modale Gioco -->
+  <div id="game-modal" class="game-modal">
+    <div class="modal-content">
+      <!-- Contenuto dinamico del gioco -->
+    </div>
+    <button class="modal-close">&times;</button>
+  </div>
+
+  <!-- Modale Risultati -->
+  <div id="results-modal" class="game-modal">
+    <div class="modal-content">
+      <div class="results-content">
+        <div class="results-header">
+          <i class="fas fa-trophy trophy-icon"></i>
+          <h3 class="results-title">Risultati</h3>
+        </div>
+        <div class="results-body" id="results-body">
+          <!-- Risultati dinamici -->
+        </div>
+        <div class="results-actions">
+          <button class="btn-action retry-btn">
+            <i class="fas fa-redo"></i> Riprova
+          </button>
+          <button class="btn-action menu-btn">
+            <i class="fas fa-home"></i> Menu
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Easter Egg -->
+  <div class="easter-egg-duck" id="minigame-duck">
+    <div class="duck-character">🐥</div>
+    <div class="duck-speech" id="duck-speech">Divertiti con i minigiochi!</div>
+  </div>
+    <!-- Toast notifications -->
+    <div id="minigame-toast" class="minigame-toast"></div>
+
+    <script>
+    
+    // Easter egg: click su tutte le icone dei giochi in sequenza rapida
+    let lastIconClick = 0;
+    let iconClickCount = 0;
+    
+    document.querySelectorAll('.game-icon').forEach(icon => {
+        icon.addEventListener('click', (e) => {
+        e.preventDefault();
+        const now = Date.now();
+        
+        if (now - lastIconClick < 1000) {
+            iconClickCount++;
+        } else {
+            iconClickCount = 1;
+        }
+        
+        lastIconClick = now;
+        
+        if (iconClickCount >= 5) {
+            window.minigamesManager.showSpecialDuck('secret');
+            window.minigamesManager.showToast('Pulcino segreto sbloccato! 🐥', 'success');
+            iconClickCount = 0;
+        }
+        });
+    });
+    </script>
+
+  <script src="minigames.js"></script>
+  <script src="words_it.js"></script>
+</body>
+</html>
