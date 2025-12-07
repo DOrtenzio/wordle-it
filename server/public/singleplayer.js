@@ -69,8 +69,6 @@ class SingleplayerGame {
     // Reset bottoni
     const submitBtn = document.getElementById("btn-submit-word");
     if (submitBtn) submitBtn.disabled = false;
-    
-    console.log("Nuova partita singleplayer! Parola:", this.word);
   }
   
   /* =========================================================

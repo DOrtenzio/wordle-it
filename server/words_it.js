@@ -5001,5 +5001,7 @@ const WORDS_IT = [
 "voule"
 ];
 
-module.exports = { WORDS_IT };
-module.exports.WORDS_IT = WORDS_IT;
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { WORDS_IT };
+  module.exports.WORDS_IT = WORDS_IT;
+}

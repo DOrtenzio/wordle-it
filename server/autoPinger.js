@@ -1,56 +1,83 @@
 const https = require('https');
 const http = require('http');
-const nodeCron = require('node-cron');
 
 class AutoPinger {
   constructor() {
     this.url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`;
     this.isProduction = process.env.NODE_ENV === 'production';
+    this.intervalId = null;
+    this.failureCount = 0;
+    this.maxFailures = 5;
   }
   
   start() {
     if (!this.isProduction) {
-      console.log('Auto-ping disattivato in sviluppo');
       return;
     }
     
-    console.log('🔄 Auto-ping attivato per:', this.url);
-    
-    // Ping ogni 8 minuti (Render dorme dopo 15 minuti)
-    nodeCron.schedule('*/8 * * * *', () => {
+    setTimeout(() => {
       this.pingServer();
-    });
+    }, 10000);
     
-    // Ping immediato all'avvio
-    setTimeout(() => this.pingServer(), 5000);
+    this.intervalId = setInterval(() => {
+      this.pingServer();
+    }, 49000); 
+  }
+  
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
   }
   
   pingServer() {
-    const url = new URL(this.url);
+    const timestamp = new Date().toISOString();
+    
+    const url = new URL(`${this.url}/health`);
     const options = {
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
-      path: '/health',
+      path: url.pathname,
       method: 'GET',
-      timeout: 10000
+      timeout: 15000, 
+      headers: {
+        'User-Agent': 'Wordle-AutoPinger/1.0',
+        'Accept': 'application/json'
+      }
     };
     
     const protocol = url.protocol === 'https:' ? https : http;
     
     const req = protocol.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => data += chunk);
+      
+      res.on('data', chunk => {
+        data += chunk;
+      });
+      
       res.on('end', () => {
-        console.log(`✅ Ping riuscito: ${this.url} - Status: ${res.statusCode}`);
+        if (res.statusCode === 200) {
+          this.failureCount = 0; // Reset contatore errori
+          try {
+            const json = JSON.parse(data);
+          } catch (e) {
+          }
+        } else {
+          this.failureCount++;
+        }
       });
     });
     
     req.on('error', (err) => {
-      console.warn(`⚠️  Ping fallito: ${err.message}`);
+      this.failureCount++;
+      
+      if (this.failureCount >= this.maxFailures) {
+      }
     });
     
     req.on('timeout', () => {
-      console.warn(`⏱️  Ping timeout per ${this.url}`);
+      this.failureCount++;
       req.destroy();
     });
     
@@ -59,3 +86,9 @@ class AutoPinger {
 }
 
 module.exports = AutoPinger;
+
+if (require.main === module) {
+  const pinger = new AutoPinger();
+  pinger.isProduction = true;
+  pinger.testPing();
+}

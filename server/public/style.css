@@ -319,6 +319,8 @@ body {
   background: var(--bg-tertiary);
   border-radius: var(--radius);
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .player-card.host {
@@ -420,6 +422,12 @@ body {
   padding: 10px 15px;
   background: var(--bg-tertiary);
   border-radius: var(--radius);
+  font-size: 0.85rem;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
 }
 
 .message-header {
@@ -468,7 +476,7 @@ body {
 }
 
 .game-chat-input input {
-  flex: 1;
+  width: 90%;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -597,11 +605,14 @@ body {
   margin: 8px 0;
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .scoreboard-player.current {
   background: rgba(106, 170, 100, 0.1);
   border-left: 4px solid var(--accent-primary);
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .player-score {
@@ -616,6 +627,7 @@ body {
   max-height: 400px;
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .game-chat h4 {
@@ -631,6 +643,7 @@ body {
   min-height: 100px;
   max-height: 200px;
   padding-right: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-messages-small::-webkit-scrollbar {
@@ -645,14 +658,6 @@ body {
 .chat-messages-small::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 10px;
-}
-
-.chat-message {
-  padding: 8px;
-  margin-bottom: 8px;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
 }
 
 .game-area {
@@ -686,34 +691,56 @@ body {
   font-size: 2rem;
   font-weight: 700;
   background: var(--bg-primary);
-  transition: all 0.3s ease;
+  transition: border-color 0.15s ease;
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .board-cell.filled {
-  animation: pop 0.15s ease-out;
+  animation: pop 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-color: var(--text-secondary);
+}
+
+.board-cell.flip {
+  animation: flip 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.board-cell.bounce {
+  animation: bounce 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.board-cell.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.board-cell.pop-reverse {
+  animation: pop-reverse 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.board-cell.tile-entry {
+  animation: tile-entry 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55) both;
 }
 
 .board-cell.correct {
   background: var(--correct);
   color: white;
   border-color: var(--correct);
+  box-shadow: 0 0 10px rgba(106, 170, 100, 0.5);
 }
 
 .board-cell.present {
   background: var(--present);
   color: white;
   border-color: var(--present);
+  box-shadow: 0 0 8px rgba(201, 180, 88, 0.4);
 }
 
 .board-cell.absent {
   background: var(--absent);
   color: white;
   border-color: var(--absent);
-}
-
-@keyframes pop {
-  0% { transform: scale(0.8); }
-  100% { transform: scale(1); }
 }
 
 .game-controls-bottom {
@@ -787,15 +814,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.key:hover {
-  background: var(--border-color);
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, background-color;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .key:active {
-  transform: scale(0.95);
+  animation: key-press 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.key.key-transition {
+  animation: key-transition 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.key:hover:not(:active) {
+  background: var(--border-color);
+  transform: translateY(-2px);
 }
 
 .key.wide {
@@ -815,6 +852,7 @@ body {
 .key.absent {
   background: var(--absent);
   color: white;
+  opacity: 0.6;
 }
 
 /* Risultati */
@@ -838,6 +876,13 @@ body {
   background: linear-gradient(135deg, rgba(106, 170, 100, 0.1), rgba(201, 180, 88, 0.1));
   border-radius: var(--radius);
   margin-bottom: 30px;
+  background: linear-gradient(135deg, 
+    rgba(106, 170, 100, 0.1), 
+    rgba(201, 180, 88, 0.1),
+    rgba(106, 170, 100, 0.1)
+  );
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
 }
 
 .winner-avatar {
@@ -950,42 +995,9 @@ body {
   opacity: 1;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .game-main {
-    grid-template-columns: 1fr;
-  }
-  
-  .scoreboard-sidebar,
-  .opponents-board {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .lobby-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .game-header h1 {
-    font-size: 2.5rem;
-  }
-  
-  .container {
-    padding: 10px;
-  }
-  
-  .main-menu {
-    padding: 20px;
-  }
-}
-
-
-
 /* =========================================================
    BADGE "COME SI GIOCA" - STILE MIGLIORATO
 ========================================================= */
-
 .how-to-play-wrapper {
   margin: 20px 0;
 }
@@ -1033,6 +1045,11 @@ body {
     0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
+.btn-how-to-play:active {
+  transform: translateY(-1px);
+  transition: transform 0.1s ease;
+}
+
 .how-to-play-content {
   display: flex;
   align-items: center;
@@ -1052,17 +1069,6 @@ body {
   flex-shrink: 0;
   box-shadow: 0 6px 20px rgba(106, 170, 100, 0.3);
   animation: iconPulse 2s ease-in-out infinite;
-}
-
-@keyframes iconPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 6px 20px rgba(106, 170, 100, 0.3);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(106, 170, 100, 0.4);
-  }
 }
 
 .how-to-play-text {
@@ -1094,54 +1100,6 @@ body {
   transform: translateX(5px);
   color: var(--accent-primary);
 }
-
-/* Versione compatta per mobile */
-@media (max-width: 768px) {
-  .how-to-play-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
-  }
-  
-  .how-to-play-content {
-    gap: 15px;
-  }
-  
-  .how-to-play-title {
-    font-size: 1.2rem;
-  }
-  
-  .how-to-play-subtitle {
-    font-size: 0.85rem;
-  }
-  
-  .btn-how-to-play {
-    padding: 15px 20px;
-  }
-}
-
-/* Versione dark mode migliorata */
-body.dark .btn-how-to-play {
-  background: linear-gradient(135deg, #2a2a2b, #3a3a3c);
-  border-color: #444;
-}
-
-body.dark .btn-how-to-play:hover {
-  border-color: var(--accent-primary);
-  box-shadow: 
-    0 8px 25px rgba(106, 170, 100, 0.25),
-    0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-/* Effetto click */
-.btn-how-to-play:active {
-  transform: translateY(-1px);
-  transition: transform 0.1s ease;
-}
-
-/* =========================================================
-   ISTRUZIONI - LAYOUT MIGLIORATO
-========================================================= */
 
 .instruction-step {
   margin-bottom: 25px;
@@ -1213,7 +1171,6 @@ body.dark .btn-how-to-play:hover {
   color: var(--text-primary);
 }
 
-/* Lista online */
 .instruction-step ul {
   list-style: none;
   padding-left: 0;
@@ -1236,8 +1193,442 @@ body.dark .btn-how-to-play:hover {
   font-weight: bold;
 }
 
-/* Responsive per mobile */
+/* Animazioni unificate */
+@keyframes flip {
+  0% {
+    transform: rotateX(0) scale(1);
+    background: var(--bg-primary);
+  }
+  45% {
+    transform: rotateX(90deg) scale(1.05);
+    background: var(--bg-primary);
+  }
+  55% {
+    transform: rotateX(90deg) scale(1.05);
+    background: var(--flip-color, var(--bg-primary));
+  }
+  100% {
+    transform: rotateX(0) scale(1);
+    background: var(--flip-color, var(--bg-primary));
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pop-reverse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-8px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-15px) scale(1.05);
+  }
+  50% {
+    transform: translateY(-7px) scale(1.02);
+  }
+  75% {
+    transform: translateY(-10px) scale(1.03);
+  }
+}
+
+@keyframes tile-entry {
+  0% {
+    transform: scale(0) rotateZ(-180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes key-press {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes key-transition {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 20px rgba(106, 170, 100, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(106, 170, 100, 0.4);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--accent-primary);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--accent-primary);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Ottimizzazioni touch */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Hardware acceleration */
+.board-cell,
+.key,
+.btn-large,
+.player-card,
+.scoreboard-player {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.flip,
+.bounce,
+.shake,
+.pop,
+.pop-reverse {
+  contain: layout style paint;
+}
+
+/* Focus visibile per tastiera */
+.key:focus-visible,
+.btn-large:focus-visible {
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Chat toggle mobile */
+.chat-toggle-mobile {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 4px 20px rgba(106, 170, 100, 0.4);
+  transition: all 0.3s ease;
+}
+
+.chat-toggle-mobile:active {
+  transform: scale(0.9);
+}
+
+.chat-toggle-mobile i {
+  transition: transform 0.3s ease;
+}
+
+.chat-toggle-mobile.open i {
+  transform: rotate(45deg);
+}
+
+/* Dark mode migliorata */
+body.dark .btn-how-to-play {
+  background: linear-gradient(135deg, #2a2a2b, #3a3a3c);
+  border-color: #444;
+}
+
+body.dark .btn-how-to-play:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 
+    0 8px 25px rgba(106, 170, 100, 0.25),
+    0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .board-cell {
+  border-color: #3a3a3c;
+}
+
+body.dark .board-cell.filled {
+  border-color: #565758;
+}
+
+/* Reduced motion per accessibilità */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Responsive */
+
+/* Tablet e dispositivi medi */
+@media (max-width: 1024px) {
+  .game-main {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .scoreboard-sidebar,
+  .opponents-board {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .board {
+    max-width: 350px;
+    gap: 6px;
+  }
+  
+  .board-cell {
+    font-size: 1.8rem;
+    border-radius: 6px;
+  }
+}
+
+/* Smartphone landscape e portrait */
 @media (max-width: 768px) {
+  /* Header più compatto */
+  .game-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .online-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+  
+  /* Container con padding ridotto */
+  .container {
+    padding: 10px;
+  }
+  
+  /* Menu principale mobile */
+  .main-menu {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  /* Avatar più piccoli su mobile */
+  .avatar {
+    width: 45px;
+    height: 45px;
+    font-size: 1.5rem;
+  }
+  
+  /* Stats preview mobile */
+  .stats-preview {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  /* Board ottimizzata per mobile */
+  .board {
+    max-width: min(350px, calc(100vw - 40px));
+    gap: 5px;
+    margin: 15px auto;
+  }
+  
+  .board-cell {
+    font-size: 1.6rem;
+    border-radius: 5px;
+    border-width: 2px;
+  }
+  
+  /* Tastiera mobile ottimizzata */
+  .keyboard {
+    max-width: 100%;
+    margin: 20px auto;
+    padding: 0 5px;
+  }
+  
+  .keyboard-row {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  
+  .key {
+    min-width: 28px;
+    height: 48px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+  }
+  
+  .key.wide {
+    min-width: 50px;
+    font-size: 0.75rem;
+  }
+  
+  /* Controlli di gioco mobile */
+  .game-controls-bottom {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .btn-large {
+    padding: 12px 20px;
+    font-size: 1rem;
+  }
+  
+  /* Lobby mobile */
+  .lobby-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .lobby-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  /* Chat mobile */
+  .chat-messages {
+    max-height: 300px;
+  }
+  
+  .chat-message {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+  
+  /* Game top bar mobile */
+  .game-top-bar {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 15px;
+  }
+  
+  .turn-info {
+    width: 100%;
+  }
+  
+  .timer {
+    font-size: 1.2rem;
+  }
+  
+  /* Opponents board mobile */
+  .opponent-cell {
+    font-size: 0.7rem;
+  }
+  
+  /* Modal mobile */
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .modal-body {
+    padding: 15px;
+  }
+  
+  /* Results mobile */
+  .results-container {
+    padding: 20px;
+    margin: 20px auto;
+  }
+  
+  .winner-avatar {
+    font-size: 3rem;
+  }
+  
+  .winner-name {
+    font-size: 1.4rem;
+  }
+  
+  /* Come si gioca mobile */
+  .how-to-play-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+  
+  .how-to-play-content {
+    gap: 15px;
+  }
+  
+  .how-to-play-title {
+    font-size: 1.2rem;
+  }
+  
+  .how-to-play-subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .btn-how-to-play {
+    padding: 15px 20px;
+  }
+  
   .color-example {
     width: 36px;
     height: 36px;
@@ -1254,5 +1645,631 @@ body.dark .btn-how-to-play:hover {
   
   .instruction-step h4 {
     font-size: 1.2rem;
+  }
+  
+  /* Toast mobile */
+  .toast {
+    bottom: 20px;
+    left: 10px;
+    right: 10px;
+    transform: translateX(0) translateY(100px);
+    width: auto;
+    max-width: calc(100vw - 20px);
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+  
+  .toast.show {
+    transform: translateX(0) translateY(0);
+  }
+  
+  /* Quick chat mobile */
+  .quick-chat {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .quick-msg {
+    padding: 12px 8px;
+    font-size: 0.85rem;
+  }
+  
+  .game-chat {
+    max-height: 300px;
+  }
+  
+  .chat-messages-small {
+    max-height: 150px;
+  }
+  
+  /* Chat mobile sidebar */
+  .chat-toggle-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .scoreboard-sidebar {
+    position: relative;
+    max-width: 100%;
+  }
+  
+  .game-chat {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 2px solid var(--border-color);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    margin: 0;
+    max-height: 60vh;
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .game-chat.mobile-open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+  
+  .game-chat h4 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .chat-close-mobile {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .chat-messages-small {
+    flex: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .game-chat-input {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-secondary);
+    padding: 12px 0 0 0;
+    margin-bottom: env(safe-area-inset-bottom, 0);
+  }
+  
+  .game-chat-input input {
+    font-size: 16px;
+    padding: 12px 15px;
+  }
+  
+  .quick-chat {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  
+  .quick-msg {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  
+  .chat-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .chat-overlay.active {
+    display: block;
+    opacity: 1;
+  }
+  
+  body.chat-mobile-open {
+    overflow: hidden;
+  }
+  
+  .keyboard {
+    margin-bottom: 80px;
+  }
+  
+  .game-controls-bottom {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .game-controls-bottom .btn-large {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Smartphone piccoli (iPhone SE, ecc.) */
+@media (max-width: 375px) {
+  .game-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .board {
+    max-width: min(300px, calc(100vw - 30px));
+    gap: 4px;
+  }
+  
+  .board-cell {
+    font-size: 1.4rem;
+    border-radius: 4px;
+  }
+  
+  .key {
+    min-width: 24px;
+    height: 44px;
+    font-size: 0.85rem;
+  }
+  
+  .key.wide {
+    min-width: 45px;
+    font-size: 0.7rem;
+  }
+  
+  .btn-large {
+    padding: 10px 16px;
+    font-size: 0.95rem;
+  }
+}
+
+/* LANDSCAPE MODE MOBILE */
+@media (max-width: 768px) and (orientation: landscape) {
+  .game-header {
+    margin-bottom: 15px;
+    padding: 10px 0;
+  }
+  
+  .game-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .board {
+    max-width: 300px;
+    gap: 4px;
+    margin: 10px auto;
+  }
+  
+  .board-cell {
+    font-size: 1.4rem;
+  }
+  
+  .keyboard {
+    margin: 10px auto;
+  }
+  
+  .keyboard-row {
+    margin-bottom: 4px;
+  }
+  
+  .key {
+    height: 40px;
+    min-width: 26px;
+  }
+  
+  .game-controls-bottom {
+    flex-direction: row;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  
+  .btn-large {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .game-chat {
+    max-height: 50vh;
+  }
+  
+  .chat-messages-small {
+    max-height: 150px;
+  }
+  
+  .chat-toggle-mobile {
+    bottom: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+}
+
+/* Bottoni più grandi su touch */
+@media (hover: none) and (pointer: coarse) {
+  .key {
+    min-height: 52px;
+  }
+  
+  .btn-small {
+    padding: 10px 18px;
+    font-size: 1rem;
+  }
+  
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+}
+
+/* Impedisci zoom su input focus (iOS) */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* SAFE AREA PER NOTCH (iPhone X e successivi) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  .game-top-bar,
+  .game-header {
+    padding-top: max(15px, env(safe-area-inset-top));
+  }
+  
+  .keyboard,
+  .game-controls-bottom {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  
+  @media (max-width: 768px) {
+    .game-chat {
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+    
+    .chat-toggle-mobile {
+      bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
+      right: max(20px, calc(env(safe-area-inset-right) + 10px));
+    }
+  }
+}
+
+/* Container papera */
+.easter-egg-duck {
+  position: fixed;
+  bottom: 20px;
+  right: -200px;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.easter-egg-duck.active {
+  opacity: 1;
+  animation: duckWalk 15s linear forwards;
+}
+
+/* Animazione camminata da destra a sinistra */
+@keyframes duckWalk {
+  0% {
+    right: -200px;
+    transform: translateY(0) scaleX(1);
+  }
+  25% {
+    transform: translateY(-15px) scaleX(1);
+  }
+  50% {
+    transform: translateY(0) scaleX(1);
+  }
+  75% {
+    transform: translateY(-15px) scaleX(1);
+  }
+  100% {
+    right: calc(100% + 200px);
+    transform: translateY(0) scaleX(1);
+  }
+}
+
+/* La papera stessa */
+.duck-character {
+  font-size: 80px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+  animation: duckWaddle 0.4s infinite alternate;
+}
+
+/* Animazione dondolio realistico */
+@keyframes duckWaddle {
+  0% {
+    transform: rotate(-5deg) translateY(0);
+  }
+  100% {
+    transform: rotate(5deg) translateY(-5px);
+  }
+}
+
+/* Fumetto con frase motivazionale */
+.duck-speech {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+  color: #333;
+  padding: 14px 24px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+  margin-bottom: 15px;
+  animation: speechBounce 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  border: 2px solid rgba(106, 170, 100, 0.3);
+}
+
+/* Triangolino del fumetto */
+.duck-speech::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 12px solid #f0f0f0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+@keyframes speechBounce {
+  0% {
+    transform: translateX(-50%) scale(0) rotate(-10deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-50%) scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: translateX(-50%) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Particelle (stelle, cuori, ecc.) */
+.duck-particle {
+  position: fixed;
+  font-size: 24px;
+  animation: particleFloat 2.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-60px) rotate(180deg) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120px) rotate(360deg) scale(0.5);
+  }
+}
+
+/* =========================================================
+   RESPONSIVE MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* Papera più piccola su mobile */
+  .duck-character {
+    font-size: 60px;
+  }
+  
+  /* Fumetto più compatto */
+  .duck-speech {
+    font-size: 13px;
+    padding: 10px 18px;
+    max-width: 220px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+  }
+  
+  .duck-speech::after {
+    border-left-width: 10px;
+    border-right-width: 10px;
+    border-top-width: 10px;
+  }
+  
+  /* Animazione più veloce su mobile */
+  .easter-egg-duck.active {
+    animation: duckWalk 12s linear forwards;
+  }
+  
+  /* Particelle più piccole */
+  .duck-particle {
+    font-size: 18px;
+  }
+  
+  /* Posizione più bassa per evitare overlap con UI */
+  .easter-egg-duck {
+    bottom: 80px;
+  }
+}
+
+/* Smartphone piccoli */
+@media (max-width: 375px) {
+  .duck-character {
+    font-size: 50px;
+  }
+  
+  .duck-speech {
+    font-size: 12px;
+    padding: 8px 14px;
+    max-width: 180px;
+  }
+}
+
+/* =========================================================
+   LANDSCAPE MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .easter-egg-duck {
+    bottom: 10px;
+  }
+  
+  .duck-character {
+    font-size: 50px;
+  }
+  
+  .duck-speech {
+    font-size: 12px;
+    padding: 8px 14px;
+  }
+}
+
+/* =========================================================
+   DARK MODE SUPPORT
+   ========================================================= */
+
+body.dark .duck-speech {
+  background: linear-gradient(135deg, #2a2a2b 0%, #1a1a1b 100%);
+  color: #f0f0f0;
+  border-color: rgba(106, 170, 100, 0.4);
+}
+
+body.dark .duck-speech::after {
+  border-top-color: #1a1a1b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .easter-egg-duck.active {
+    animation: duckWalkSimple 10s linear forwards;
+  }
+  
+  @keyframes duckWalkSimple {
+    from {
+      right: -200px;
+    }
+    to {
+      right: calc(100% + 200px);
+    }
+  }
+  
+  .duck-character {
+    animation: none;
+  }
+  
+  .duck-speech {
+    animation: none;
+    opacity: 1;
+  }
+  
+  .duck-particle {
+    animation: particleFloatSimple 1s ease-out forwards;
+  }
+  
+  @keyframes particleFloatSimple {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-50px);
+    }
+  }
+}
+
+.duck-character::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 10px;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.3) 0%, transparent 70%);
+  animation: shadowPulse 0.4s infinite alternate;
+}
+
+@keyframes shadowPulse {
+  0% {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.5;
+  }
+}
+
+/* Brillantini sul fumetto */
+.duck-speech::before {
+  content: '✨';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  animation: sparkle 1.5s infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3) rotate(180deg);
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .duck-speech {
+    border: 3px solid #000;
+    background: #fff;
+    color: #000;
+  }
+  
+  body.dark .duck-speech {
+    border: 3px solid #fff;
+    background: #000;
+    color: #fff;
   }
 }

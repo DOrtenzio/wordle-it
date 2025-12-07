@@ -1,7 +1,3 @@
-/**
- * game.js - Logica condivisa del gioco Wordle
- */
-
 class GameEngine {
   constructor(wordList = []) {
     this.words = wordList;
@@ -28,7 +24,7 @@ class GameEngine {
 
   getRandomWord() {
     if (this.words.length === 0) {
-      throw new Error('Lista di parole vuota');
+      throw new error('Lista di parole vuota');
     }
     return this.words[Math.floor(Math.random() * this.words.length)].toUpperCase();
   }

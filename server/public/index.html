@@ -16,7 +16,7 @@
         <h1><i class="fas fa-globe"></i> MORDLE ITA <span class="online-badge">ONLINE</span></h1>
         <p class="subtitle">Gioca a Wordle con amici in tempo reale</p>
       </header>
-      
+
       <div class="main-menu">
         <div class="player-info">
           <div class="input-group">
@@ -367,12 +367,69 @@
   
   <!-- Toast notifications -->
   <div id="toast" class="toast"></div>
+
+  <!-- Bottone toggle chat mobile -->
+  <button class="chat-toggle-mobile" id="chat-toggle-mobile">
+    <i class="fas fa-comments"></i>
+  </button>
   
+  <!-- Overlay per chat mobile -->
+  <div class="chat-overlay" id="chat-overlay"></div>
+
   <!-- Scripts -->
   <script src="words_it.js"></script>
   <script src="game.js"></script>
   <script src="online.js"></script>
   <script src="singleplayer.js"></script>
   <script src="main.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const chatToggle = document.getElementById('chat-toggle-mobile');
+      const chatOverlay = document.getElementById('chat-overlay');
+      const gameChat = document.querySelector('.game-chat');
+      
+      if (!chatToggle || !gameChat) return;
+      
+      function toggleChat() {
+        const isOpen = gameChat.classList.contains('mobile-open');
+        
+        if (isOpen) {
+          gameChat.classList.remove('mobile-open');
+          chatOverlay.classList.remove('active');
+          document.body.classList.remove('chat-mobile-open');
+          chatToggle.classList.remove('open');
+        } else {
+          gameChat.classList.add('mobile-open');
+          chatOverlay.classList.add('active');
+          document.body.classList.add('chat-mobile-open');
+          chatToggle.classList.add('open');
+          
+          const chatInput = document.getElementById('game-chat-input');
+          if (chatInput) {
+            setTimeout(() => chatInput.focus(), 300);
+          }
+        }
+      }
+      
+      chatToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleChat();
+      });
+      
+      chatOverlay.addEventListener('click', () => {
+        toggleChat();
+      });
+      
+      const chatHeader = gameChat.querySelector('h4');
+      if (chatHeader && window.innerWidth <= 768) {
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'chat-close-mobile';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.onclick = toggleChat;
+        chatHeader.appendChild(closeBtn);
+      }
+    });
+  </script>
 </body>
 </html>
