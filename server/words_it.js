@@ -5002,6 +5002,7 @@ const WORDS_IT = [
 ];
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { WORDS_IT };
-  module.exports.WORDS_IT = WORDS_IT;
+    module.exports = WORDS_IT; 
+} else {
+    window.WORDS_IT = WORDS_IT; 
 }

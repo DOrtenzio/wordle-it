@@ -1,8 +1,9 @@
 class WordleOnline {
- constructor() {
+  constructor() {
     if (window.wordleOnline && window.wordleOnline instanceof WordleOnline) {
       return window.wordleOnline;
     }
+    
     this.socket = null;
     this.playerId = null;
     this.roomCode = null;
@@ -12,16 +13,15 @@ class WordleOnline {
     this.currentGame = null;
     this.timerInterval = null;
     this.timeLeft = 120;
-    this.isProcessingInput = false; 
-    this.lastKeyPressTime = 0;     
+    this.isProcessingInput = false;
+    this.lastKeyPressTime = 0;
     this.isAnimating = false;
+    this.currentInput = '';
+    this.roomPlayers = [];
     
     this.connectWebSocket();
     this.bindEvents();
     this.updateOnlineStats();
-  }
-  
-  initialize() {
   }
   
   bindEvents() {
@@ -32,7 +32,7 @@ class WordleOnline {
       const btn = e.target.closest('button, [data-action], .quick-msg, .modal-close');
       if (!btn) return;
 
-      if (btn.classList && btn.classList.contains('quick-msg')) {
+      if (btn.classList.contains('quick-msg')) {
         const msg = btn.dataset.msg;
         if (msg) {
           e.preventDefault();
@@ -41,7 +41,7 @@ class WordleOnline {
         return;
       }
 
-      if (btn.classList && btn.classList.contains('modal-close')) {
+      if (btn.classList.contains('modal-close')) {
         const modal = btn.closest('.modal');
         if (modal) this.closeModal(modal);
         return;
@@ -63,23 +63,17 @@ class WordleOnline {
         case 'btn-send-game-chat': this.sendGameChatMessage(); break;
         case 'btn-next-round': this.nextRound(); break;
         case 'btn-return-lobby': this.returnToLobby(); break;
-        case 'btn-minigames':
-          window.open('minigames.html', '_self');
-          break;
-        default:
-          const action = btn.dataset.action;
-          if (action) {
-            if (action === 'copy-room') this.copyRoomCode();
-          }
-          break;
+        case 'btn-minigames': window.open('minigames.html', '_self'); break;
       }
     });
 
-    const avatarsContainer = document.querySelector('.avatars') || document.body;
-    avatarsContainer.addEventListener('click', (e) => {
-      const av = e.target.closest('.avatar');
-      if (av) this.selectAvatar(av);
-    });
+    const avatarsContainer = document.querySelector('.avatars');
+    if (avatarsContainer) {
+      avatarsContainer.addEventListener('click', (e) => {
+        const av = e.target.closest('.avatar');
+        if (av) this.selectAvatar(av);
+      });
+    }
 
     const readyCheckbox = document.getElementById('ready-checkbox');
     if (readyCheckbox) {
@@ -107,13 +101,15 @@ class WordleOnline {
     }
 
     document.addEventListener('keydown', (e) => this.handlePhysicalKeyboard(e));
-  }
-  
-  addEventListener(elementId, callback) {
-    const element = document.getElementById(elementId);
-    if (element) {
-      element.addEventListener('click', callback);
-    }
+    document.addEventListener('screen-changed', (e) => {
+      if (e.detail.screen === 'lobby-screen') {
+        const readyCheckbox = document.getElementById('ready-checkbox');
+        if (readyCheckbox && this.roomPlayers.length > 0) {
+          const currentPlayer = this.roomPlayers.find(p => p.id === this.playerId);
+          readyCheckbox.checked = currentPlayer ? currentPlayer.isReady : false;
+        }
+      }
+    });
   }
   
   connectWebSocket() {
@@ -124,6 +120,7 @@ class WordleOnline {
       const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       wsUrl = protocol + window.location.host;
     }
+    
     this.socket = new WebSocket(wsUrl);
     
     this.socket.onopen = () => {
@@ -135,7 +132,7 @@ class WordleOnline {
         const data = JSON.parse(event.data);
         this.handleServerMessage(data);
       } catch (error) {
-        console.console.error('Errore parsing messaggio:', error);
+        console.error('Errore parsing messaggio:', error);
       }
     };
     
@@ -150,58 +147,39 @@ class WordleOnline {
   }
   
   handleServerMessage(data) {
-    
     switch(data.type) {
       case 'welcome':
         this.playerId = data.playerId;
         break;
-        
       case 'room-created':
         this.handleRoomCreated(data);
         break;
-        
       case 'room-joined':
         this.handleRoomJoined(data);
         break;
-        
       case 'room-left':
         this.handleRoomLeft();
         break;
-        
       case 'player-joined':
         this.handlePlayerJoined(data);
         break;
-        
       case 'player-left':
         this.handlePlayerLeft(data);
         break;
-        
       case 'player-ready-updated':
         this.handlePlayerReadyUpdated(data);
         break;
-        
       case 'game-started':
         this.handleGameStarted(data);
         break;
-        
-      case 'game-update':
-        this.handleGameUpdate(data);
+      case 'turn-changed':
+        this.handleTurnChanged(data);
         break;
-        
-      case 'turn-skipped':
-        this.handleTurnSkipped(data);
-        break;
-        
       case 'guess-result':
         this.handleGuessResult(data);
         break;
-        
       case 'chat-message':
         this.handleChatMessage(data);
-        break;
-        
-      case 'error':
-        this.showToast(data.message, 'error');
         break;
       case 'player-won-round':
         this.handlePlayerWonRound(data);
@@ -211,6 +189,9 @@ class WordleOnline {
         break;
       case 'game-ended':
         this.handleGameEnded(data);
+        break;
+      case 'error':
+        this.showToast(data.message, 'error');
         break;
     }
   }
@@ -229,19 +210,9 @@ class WordleOnline {
       return;
     }
     
-    const settings = {
-      maxPlayers: 4,
-      hardMode: false,
-      timePerTurn: 120,
-      rounds: 3
-    };
-    
     this.socket.send(JSON.stringify({
       type: 'create-room',
-      payload: {
-        playerName: this.playerName,
-        settings
-      }
+      payload: { playerName: this.playerName }
     }));
   }
   
@@ -267,51 +238,124 @@ class WordleOnline {
     
     this.socket.send(JSON.stringify({
       type: 'join-room',
-      payload: {
-        roomCode,
-        playerName: this.playerName
-      }
+      payload: { roomCode, playerName: this.playerName }
     }));
   }
   
   handleRoomCreated(data) {
     this.roomCode = data.roomCode;
     this.isHost = data.isHost;
-    
     this.showScreen('lobby-screen');
-    this.updateLobbyUI();
+    this.clearPlayersList();
+    document.getElementById('lobby-room-code').textContent = this.roomCode;
+    document.getElementById('share-room-code').textContent = this.roomCode;
+    if (data.players && Array.isArray(data.players)) {
+      this.roomPlayers = data.players;
+      data.players.forEach(player => {
+        this.addPlayerToLobby({
+          id: player.id,
+          name: player.name,
+          isHost: player.isHost,
+          isReady: player.isReady || false
+        });
+      });
+    }
+    const readyCheckbox = document.getElementById('ready-checkbox');
+    if (readyCheckbox) {
+      const currentPlayer = this.roomPlayers.find(p => p.id === this.playerId);
+      readyCheckbox.checked = currentPlayer ? currentPlayer.isReady : false;
+    }
+    
+    this.updatePlayerCount();
+    this.updateStartButton();
     this.showToast(`Stanza ${this.roomCode} creata!`);
   }
-  
+
   handleRoomJoined(data) {
     this.roomCode = data.roomCode;
     this.isHost = data.isHost;
-    
     this.showScreen('lobby-screen');
-    this.updateLobbyUI();
+    this.clearPlayersList();
+    document.getElementById('lobby-room-code').textContent = this.roomCode;
+    document.getElementById('share-room-code').textContent = this.roomCode;
+    if (data.players && Array.isArray(data.players)) {
+      this.roomPlayers = data.players;
+      data.players.forEach(player => {
+        this.addPlayerToLobby({
+          id: player.id,
+          name: player.name,
+          isHost: player.isHost,
+          isReady: player.isReady || false
+        });
+      });
+    }
+    const readyCheckbox = document.getElementById('ready-checkbox');
+    if (readyCheckbox) {
+      const currentPlayer = this.roomPlayers.find(p => p.id === this.playerId);
+      readyCheckbox.checked = currentPlayer ? currentPlayer.isReady : false;
+    }
+    this.updatePlayerCount();
+    this.updateStartButton();
     this.showToast(`Unito a stanza ${this.roomCode}`);
   }
+
   
   handleRoomLeft() {
     this.roomCode = null;
     this.isHost = false;
+    this.roomPlayers = [];
     this.showScreen('start-screen');
     this.showToast('Hai lasciato la stanza');
   }
   
   handlePlayerJoined(data) {
-    this.addPlayerToLobby(data.player);
+    this.addPlayerToLobby({
+      id: data.player.id,
+      name: data.player.name,
+      isHost: data.player.isHost || false,
+      isReady: data.player.isReady || false
+    });
+    
+    this.roomPlayers.push(data.player);
     this.updatePlayerCount();
-    this.showToast(`${data.player.name} si è unito`, 'info');
+    this.updateStartButton();
+    this.addChatMessage('Sistema', `${data.player.name} si è unito`, Date.now());
   }
   
   handlePlayerLeft(data) {
     this.removePlayerFromLobby(data.playerId);
+    this.roomPlayers = this.roomPlayers.filter(p => p.id !== data.playerId);
     this.updatePlayerCount();
+    this.updateStartButton();
+    this.addChatMessage('Sistema', `${data.playerName} ha lasciato`, Date.now());
   }
   
   handlePlayerReadyUpdated(data) {
     this.updatePlayerReady(data.playerId, data.isReady);
+    if (data.players) {
+      this.roomPlayers = data.players;
+    }
+    if (data.playerId === this.playerId) {
+      const readyCheckbox = document.getElementById('ready-checkbox');
+      if (readyCheckbox) {
+        readyCheckbox.checked = data.isReady;
+      }
+    }
+    
+    this.updateStartButton();
+  }
+  
+  handleTurnChanged(data) {
+    if (data.gameState) {
+      this.currentGame = data.gameState;
+    }
+    
+    this.updateGameUI();
+    
+    if (data.currentPlayerId === this.playerId) {
+      this.showToast('È il tuo turno!', 'success');
+      this.startTurnTimer();
+    }
   }
   
   handleGameStarted(data) {
@@ -323,109 +367,117 @@ class WordleOnline {
     if (!Array.isArray(this.currentGame.players)) {
       this.currentGame.players = [];
     }
-    
     this.showScreen('game-screen');
-    this.startTurnTimer();
-    this.updateGameUI();
+    const gameRoomCodeEl = document.getElementById('game-room-code');
+    if (gameRoomCodeEl) {
+      gameRoomCodeEl.textContent = this.roomCode;
+    }
+    
     this.initializeGameBoard();
+    this.updateGameUI();
     this.showToast('Partita iniziata!', 'success');
   }
   
-  handleGameUpdate(data) {
-    this.currentGame = data.gameState;
-    this.updateGameUI();
-    this.startTurnTimer();
-    
-    if (this.currentGame.gameStatus === 'finished') {
-      this.showResults();
-    }
-  }
-  
-  handleTurnSkipped(data) {
-    this.showToast(`${data.playerName} ha saltato il turno`, 'info');
-    this.startTurnTimer();
-  }
-  
   handleGuessResult(data) {
-    if (data.playerId !== this.playerId) {
-      return;
-    }
-    if (!data.result || !Array.isArray(data.result)) {
-      this.showToast('Errore nel risultato', 'error');
-      return;
+    if (data.playerId === this.playerId) {
+      this.updateBoardWithGuess(data);
+      this.isProcessingInput = false;
     }
     
-    this.updateBoardWithGuess(data);
-    if (data.guessed) {
-      this.showToast('Hai indovinato! 🎉', 'success');
-      document.getElementById('btn-submit-word').disabled = true;
-      document.getElementById('btn-skip-turn').disabled = true;
-    } else {
-      this.showToast('Tentativo registrato', 'info');
+    if (data.gameState) {
+      this.currentGame = data.gameState;
     }
-    this.isProcessingInput = false;
+    
+    this.updateGameUI();
+    this.updateOpponentsBoards();
+    
+    if (data.guessed) {
+      if (data.playerId === this.playerId) {
+        this.showToast('Hai indovinato! 🎉', 'success');
+      } else {
+        this.showToast(`${data.playerName} ha indovinato!`, 'info');
+      }
+    }
   }
   
   handleChatMessage(data) {
     this.addChatMessage(data.playerName, data.message, data.timestamp);
   }
-
+  
   handlePlayerWonRound(data) {
     this.showToast(`${data.playerName} ha indovinato! +${data.score} punti`, 'success');
+    
     if (this.currentGame?.players) {
-      const player = this.currentGame.players.find(p => p.name === data.playerName);
+      const player = this.currentGame.players.find(p => p.id === data.playerId);
       if (player) {
         player.score = data.score;
         this.updateScoreboard();
       }
     }
   }
-
+  
   handleNextRoundStarted(data) {
     this.showToast(`Round ${data.round} iniziato!`, 'info');
     this.initializeGameBoard();
-    this.currentInput = '';
+    
+    if (data.gameState) {
+      this.currentGame = data.gameState;
+    }
+    
+    this.updateGameUI();
+    
     if (this.currentGame) {
-      this.currentGame.currentRound = data.round;
       document.getElementById('current-round').textContent = data.round;
     }
-    if (data.scores) {
-      data.scores.forEach(({ name, score }) => {
-        if (this.currentGame?.players) {
-          const player = this.currentGame.players.find(p => p.name === name);
-          if (player) player.score = score;
-        }
-      });
-      this.updateScoreboard();
-    }
+    
     document.getElementById('btn-submit-word').disabled = false;
     document.getElementById('btn-skip-turn').disabled = false;
   }
-
+  
   handleGameEnded(data) {
     this.showToast(data.message, 'success');
     this.showScreen('results-screen');
+    
     document.getElementById('winner-name').textContent = data.winner ? `${data.winner} vince!` : 'Partita terminata';
     document.getElementById('winner-score').textContent = data.scores?.find(s => s.name === data.winner)?.score || 0;
-    document.getElementById('results-round').textContent = '3'; 
+    document.getElementById('results-round').textContent = 'Finale';
     document.getElementById('results-word').textContent = 'COMPLETATA';
+    
     this.updateResultsScoreboard(data.scores);
   }
-
   
-  // UI Methods
   showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
       screen.classList.remove('active');
     });
     document.getElementById(screenId).classList.add('active');
+    document.dispatchEvent(new CustomEvent('screen-changed', {
+      detail: { screen: screenId }
+    }));
+
+    const chatToggleButton = document.querySelector('.chat-toggle');
+    if (chatToggleButton) {
+        if (screenId === 'game-screen') {
+            chatToggleButton.style.display = 'flex';
+        } else {
+            chatToggleButton.style.display = 'none';
+            const gameChat = document.querySelector('.game-chat');
+            if (gameChat) {
+                gameChat.classList.remove('mobile-open');
+                document.getElementById('chat-overlay')?.classList.remove('active');
+            }
+        }
+    }
   }
   
   updateLobbyUI() {
-    document.getElementById('lobby-room-code').textContent = this.roomCode;
-    document.getElementById('share-room-code').textContent = this.roomCode;
-    
-    document.getElementById('ready-checkbox').checked = false;
+    document.getElementById('lobby-room-code').textContent = this.roomCode || '----';
+    document.getElementById('share-room-code').textContent = this.roomCode || '----';
+    const readyCheckbox = document.getElementById('ready-checkbox');
+    if (readyCheckbox) {
+      const currentPlayer = this.roomPlayers.find(p => p.id === this.playerId);
+      readyCheckbox.checked = currentPlayer ? currentPlayer.isReady : false;
+    }
     
     this.clearPlayersList();
     this.addPlayerToLobby({
@@ -441,6 +493,8 @@ class WordleOnline {
   
   addPlayerToLobby(player) {
     const container = document.getElementById('players-container');
+    if (!container) return;
+    
     const playerCard = document.createElement('div');
     playerCard.className = 'player-card';
     playerCard.dataset.playerId = player.id;
@@ -476,23 +530,30 @@ class WordleOnline {
         statusEl.classList.toggle('ready', isReady);
       }
     }
-    this.updateStartButton();
   }
   
   clearPlayersList() {
-    document.getElementById('players-container').innerHTML = '';
+    const container = document.getElementById('players-container');
+    if (container) container.innerHTML = '';
   }
   
   updatePlayerCount() {
     const players = document.querySelectorAll('.player-card');
-    document.getElementById('player-count').textContent = players.length;
+    const countElement = document.getElementById('player-count');
+    if (countElement) {
+      countElement.textContent = players.length;
+    }
   }
   
   updateStartButton() {
     const btnStart = document.getElementById('btn-start-game');
-    const players = document.querySelectorAll('.player-card');
-    const allReady = Array.from(players).every(card => card.classList.contains('ready'));
-    btnStart.disabled = !this.isHost || players.length < 1 || players.length > 4 || !allReady;
+    if (!btnStart) return;
+    
+    const players = this.roomPlayers || [];
+    const allReady = players.every(p => p.isReady);
+    const hasMinPlayers = players.length >= 1;
+    
+    btnStart.disabled = !this.isHost || !hasMinPlayers || !allReady;
   }
   
   startGame() {
@@ -516,9 +577,10 @@ class WordleOnline {
       .catch(() => this.showToast('Errore nella copia', 'error'));
   }
   
-  // Game Methods
   initializeGameBoard() {
     const board = document.getElementById('player-board');
+    if (!board) return;
+    
     board.innerHTML = '';
     
     for (let i = 0; i < 6; i++) {
@@ -533,16 +595,19 @@ class WordleOnline {
     
     this.initializeKeyboard();
     this.isProcessingInput = false;
+    this.currentInput = '';
   }
   
   initializeKeyboard() {
+    const keyboard = document.getElementById('keyboard');
+    if (!keyboard) return;
+    
     const layout = [
       ['q','w','e','r','t','y','u','i','o','p'],
       ['a','s','d','f','g','h','j','k','l'],
       ['enter','z','x','c','v','b','n','m','⌫']
     ];
     
-    const keyboard = document.getElementById('keyboard');
     keyboard.innerHTML = '';
     
     layout.forEach(row => {
@@ -569,14 +634,10 @@ class WordleOnline {
   
   handleKeyboardClick(key) {
     const now = Date.now();
-    if (now - this.lastKeyPressTime < 100) {
-      return;
-    }
+    if (now - this.lastKeyPressTime < 100) return;
     this.lastKeyPressTime = now;
     
-    if (this.isProcessingInput) {
-      return;
-    }
+    if (this.isProcessingInput) return;
     
     if (key === 'enter') {
       this.submitGuess();
@@ -588,25 +649,18 @@ class WordleOnline {
   }
   
   handlePhysicalKeyboard(e) {
-    // Solo durante il gioco
     const gameScreen = document.getElementById('game-screen');
     if (!gameScreen || !gameScreen.classList.contains('active')) return;
     
-    // Non intercettare input in campi di testo
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    
-    // Ignora tasti ripetuti (hold del tasto)
     if (e.repeat) return;
     
-    // Throttling: ignora input troppo rapidi
     const now = Date.now();
     if (now - this.lastKeyPressTime < 50) return;
     this.lastKeyPressTime = now;
     
-    // Non elaborare se animazione o input in corso
     if (this.isProcessingInput || this.isAnimating) return;
     
-    // Gestisci il tasto
     if (e.key === 'Enter') {
       e.preventDefault();
       this.submitGuess();
@@ -620,7 +674,6 @@ class WordleOnline {
   }
   
   addLetter(letter) {
-    // Protezioni
     if (this.isProcessingInput || this.isAnimating) return;
     if (!this.currentGame?.players) return;
     
@@ -630,15 +683,12 @@ class WordleOnline {
     const currentRow = currentPlayer.currentAttempt || 0;
     const cells = document.querySelectorAll(`.board-cell[data-row="${currentRow}"]`);
     
-    // Trova prima cella vuota
     const emptyCell = Array.from(cells).find(cell => !cell.textContent);
-    if (!emptyCell) return; // Riga piena
+    if (!emptyCell) return;
     
-    // Aggiungi lettera
     emptyCell.textContent = letter.toUpperCase();
     emptyCell.classList.add('filled');
     
-    // Animazione
     this.isAnimating = true;
     emptyCell.style.animation = 'none';
     requestAnimationFrame(() => {
@@ -659,7 +709,6 @@ class WordleOnline {
     const currentRow = currentPlayer.currentAttempt || 0;
     const cells = Array.from(document.querySelectorAll(`.board-cell[data-row="${currentRow}"]`));
     
-    // Trova ultima cella piena (da destra a sinistra)
     for (let i = cells.length - 1; i >= 0; i--) {
       if (cells[i].textContent) {
         const cell = cells[i];
@@ -681,16 +730,14 @@ class WordleOnline {
   }
   
   submitGuess() {
-    if (this.isProcessingInput) {
-      return;
-    }
+    if (this.isProcessingInput) return;
     
     if (!this.currentGame) {
       this.showToast('Partita non iniziata', 'error');
       return;
     }
     
-    const currentPlayer = this.currentGame?.players?.find(p => p.id === this.playerId);
+    const currentPlayer = this.currentGame.players.find(p => p.id === this.playerId);
     if (!currentPlayer) {
       this.showToast('Giocatore non trovato', 'error');
       return;
@@ -710,14 +757,12 @@ class WordleOnline {
       return;
     }
     
-    // Blocca input multipli
     this.isProcessingInput = true;
     this.socket.send(JSON.stringify({
       type: 'make-guess',
       payload: { word }
     }));
     
-    // Timeout di sicurezza
     setTimeout(() => {
       if (this.isProcessingInput) {
         this.isProcessingInput = false;
@@ -726,23 +771,17 @@ class WordleOnline {
   }
   
   updateBoardWithGuess(data) {
-    
     const currentPlayer = this.currentGame?.players?.find(p => p.id === this.playerId);
-    if (!currentPlayer) {
-      console.error('❌ Player non trovato');
-      return;
-    }
+    if (!currentPlayer) return;
     
     const currentRow = currentPlayer.currentAttempt || 0;
     const cells = document.querySelectorAll(`.board-cell[data-row="${currentRow}"]`);
     
-    // Anima le celle
     cells.forEach((cell, index) => {
       setTimeout(() => {
         cell.classList.add('flip');
         cell.classList.add(data.result[index]);
         
-        // Aggiorna tastiera
         const letter = cell.textContent.toLowerCase();
         const key = document.querySelector(`.key[data-key="${letter}"]`);
         if (key && !key.classList.contains('correct')) {
@@ -751,7 +790,6 @@ class WordleOnline {
       }, index * 300);
     });
     
-    // Incrementa attempt DOPO l'animazione
     setTimeout(() => {
       if (currentPlayer) {
         currentPlayer.currentAttempt = (currentPlayer.currentAttempt || 0) + 1;
@@ -789,57 +827,36 @@ class WordleOnline {
   }
   
   updateGameUI() {
-    if (!this.currentGame) {
-      return;
-    }
+    if (!this.currentGame) return;
     
-    if (!Array.isArray(this.currentGame.players)) {
-      this.currentGame.players = [];
-      return;
-    }
-    
-    // Aggiorna round
-    const currentRound = this.currentGame.currentRound || 1;
-    document.getElementById('current-round').textContent = currentRound;
-    
-    // Aggiorna giocatore corrente
     const currentPlayerIndex = this.currentGame.currentPlayerIndex || 0;
     const currentPlayer = this.currentGame.players[currentPlayerIndex];
-    
-    if (currentPlayer) {
-      document.getElementById('current-player-name').textContent = currentPlayer.name || 'Giocatore';
-    } else {
-      document.getElementById('current-player-name').textContent = 'In attesa...';
-    }
-    
-    this.updateScoreboard();
-    
-    // Controlla se è il mio turno
     const isMyTurn = currentPlayer && currentPlayer.id === this.playerId;
     const myPlayer = this.currentGame.players.find(p => p.id === this.playerId);
     const hasGuessed = myPlayer ? myPlayer.hasGuessed : false;
     
+    if (currentPlayer) {
+      document.getElementById('current-player-name').textContent = currentPlayer.name;
+    }
+    
+    document.getElementById('current-round').textContent = this.currentGame.currentRound || 1;
+    
     const submitBtn = document.getElementById('btn-submit-word');
     const skipBtn = document.getElementById('btn-skip-turn');
     
-    if (submitBtn) {
-      submitBtn.disabled = !isMyTurn || hasGuessed;
-    }
+    if (submitBtn) submitBtn.disabled = !isMyTurn || hasGuessed;
+    if (skipBtn) skipBtn.disabled = !isMyTurn;
     
-    if (skipBtn) {
-      skipBtn.disabled = !isMyTurn;
-    }
-    
+    this.updateScoreboard();
     this.updateOpponentsBoards();
   }
   
   updateScoreboard() {
     const container = document.getElementById('scoreboard');
     if (!container) return;
+    
     container.innerHTML = '';
-    const players = Array.isArray(this.currentGame?.players) 
-      ? this.currentGame.players 
-      : [];
+    const players = Array.isArray(this.currentGame?.players) ? this.currentGame.players : [];
     
     if (players.length === 0) {
       container.innerHTML = '<div class="no-players">Nessun giocatore</div>';
@@ -856,7 +873,6 @@ class WordleOnline {
       const playerEl = document.createElement('div');
       playerEl.className = 'scoreboard-player';
       
-      // Controlla se è il giocatore corrente
       const currentPlayerIndex = this.currentGame.currentPlayerIndex || 0;
       const currentPlayer = this.currentGame.players[currentPlayerIndex];
       if (currentPlayer && player.id === currentPlayer.id) {
@@ -874,15 +890,14 @@ class WordleOnline {
       container.appendChild(playerEl);
     });
   }
-
+  
   updateOpponentsBoards() {
     const container = document.getElementById('opponents-container');
     if (!container) return;
     
     container.innerHTML = '';
-    const players = Array.isArray(this.currentGame?.players) 
-      ? this.currentGame.players 
-      : [];
+    
+    const players = Array.isArray(this.currentGame?.players) ? this.currentGame.players : [];
     
     players
       .filter(player => player.id !== this.playerId)
@@ -897,40 +912,39 @@ class WordleOnline {
           <div class="opponent-header">
             <span>${playerName}</span>
             <span>Tentativi: ${currentAttempt}/6</span>
+            ${player.hasGuessed ? '<span class="guessed-badge">✓ Indovinato</span>' : ''}
           </div>
           <div class="opponent-grid" id="opponent-${player.id}"></div>
         `;
         
         container.appendChild(opponentEl);
-        this.updateOpponentBoard(player);
+        
+        const grid = document.getElementById(`opponent-${player.id}`);
+        if (grid) {
+          grid.innerHTML = '';
+          
+          for (let row = 0; row < 6; row++) {
+            for (let col = 0; col < 5; col++) {
+              const cell = document.createElement('div');
+              cell.className = 'opponent-cell';
+              
+              if (player.guesses && player.guesses[row]) {
+                const guess = player.guesses[row];
+                if (guess.word && guess.word[col]) {
+                  cell.textContent = guess.word[col].toUpperCase();
+                  if (guess.result && guess.result[col]) {
+                    cell.classList.add(guess.result[col]);
+                  }
+                }
+              }
+              
+              grid.appendChild(cell);
+            }
+          }
+        }
       });
   }
   
-  updateOpponentBoard(player) {
-    const container = document.getElementById(`opponent-${player.id}`);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    for (let i = 0; i < 6; i++) {
-      for (let j = 0; j < 5; j++) {
-        const cell = document.createElement('div');
-        cell.className = 'opponent-cell';
-        
-        if (i < player.currentAttempt) {
-          const guess = player.guesses[i];
-          if (guess && guess.word[j]) {
-            cell.textContent = guess.word[j].toUpperCase();
-            if (guess.result[j]) cell.classList.add(guess.result[j]);
-          }
-        }
-        
-        container.appendChild(cell);
-      }
-    }
-  }
-  
-  // Chat Methods
   sendChatMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
@@ -946,6 +960,7 @@ class WordleOnline {
   
   sendQuickMessage(message) {
     if (!message) return;
+    
     this.socket.send(JSON.stringify({
       type: 'chat-message',
       payload: { message }
@@ -996,7 +1011,6 @@ class WordleOnline {
     }
   }
   
-  // Results
   showResults() {
     this.showScreen('results-screen');
     
@@ -1014,6 +1028,8 @@ class WordleOnline {
   
   updateResultsScoreboard(scoresArray = null) {
     const container = document.getElementById('results-scoreboard');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     const players = scoresArray || 
@@ -1046,7 +1062,6 @@ class WordleOnline {
     this.showScreen('lobby-screen');
   }
   
-  // Utility Methods
   selectAvatar(avatarEl) {
     document.querySelectorAll('.avatar').forEach(av => av.classList.remove('selected'));
     avatarEl.classList.add('selected');
@@ -1063,6 +1078,8 @@ class WordleOnline {
   
   showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
+    if (!toast) return;
+    
     toast.textContent = message;
     toast.className = 'toast';
     
@@ -1132,7 +1149,6 @@ class WordleOnline {
   }
 }
 
-// Inizializza quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', () => {
   if (!window.wordleOnline || !(window.wordleOnline instanceof WordleOnline)) {
     window.wordleOnline = new WordleOnline();

@@ -1,8 +1,8 @@
-const WORDS_IT = require('./words_it'); // Dovrai creare questo file
+const WORDS_IT = require('./words_it'); 
 
 class GameManager {
   constructor() {
-    this.games = new Map(); // roomCode -> gameState
+    this.games = new Map(); 
   }
   
   startGame(roomCode, room) {

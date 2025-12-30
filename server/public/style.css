@@ -1367,8 +1367,8 @@ body {
 }
 
 /* Chat toggle mobile */
-.chat-toggle-mobile {
-  display: none;
+.chat-toggle {
+  display: none !important;
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -1385,16 +1385,24 @@ body {
   transition: all 0.3s ease;
 }
 
-.chat-toggle-mobile:active {
+.chat-toggle:active {
   transform: scale(0.9);
 }
 
-.chat-toggle-mobile i {
+.chat-toggle i {
   transition: transform 0.3s ease;
+  align-items: center;
 }
 
-.chat-toggle-mobile.open i {
+.chat-toggle .open i {
   transform: rotate(45deg);
+}
+
+@media (max-width: 768px) {
+    #game-screen.active ~ .chat-toggle, 
+    body:has(#game-screen.active) .chat-toggle {
+        display: flex !important;
+    }
 }
 
 /* Dark mode migliorata */
@@ -2272,4 +2280,57 @@ body.dark .duck-speech::after {
     background: #000;
     color: #fff;
   }
+}
+
+.opponent-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  grid-template-rows: repeat(6, 30px);
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.opponent-cell {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #d3d6da;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.opponent-cell.correct { background-color: #6aaa64; color: white; border-color: #6aaa64; }
+.opponent-cell.present { background-color: #c9b458; color: white; border-color: #c9b458; }
+.opponent-cell.absent { background-color: #787c7e; color: white; border-color: #787c7e; }
+
+.opponent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 5px;
+  background: #f0f0f0;
+  border-radius: 5px;
+}
+
+.guessed-badge {
+  background: #28a745;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+/* Timer warning */
+.timer.warning {
+  color: #dc3545;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }

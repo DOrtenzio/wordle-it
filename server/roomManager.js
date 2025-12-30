@@ -27,11 +27,11 @@ class RoomManager {
       players: [{
         id: hostId,
         name: hostName,
-        isReady: true,
+        isReady: false,
         score: 0,
         isHost: true
       }],
-      gameState: 'waiting', // waiting, playing, finished
+      gameState: 'waiting',
       settings: {
         maxPlayers: settings.maxPlayers || 4,
         hardMode: settings.hardMode || false,

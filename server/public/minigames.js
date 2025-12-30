@@ -377,7 +377,7 @@ startAngleGame() {
     const guessItem = document.createElement('div');
     guessItem.className = `guess-item ${isCorrect ? 'correct' : 'wrong'}`;
     
-    const diffText = isCorrect ? 'ESATTO!' : `Differenza: ${difference}°`;
+    const diffText = isCorrect ? 'ESATTO!' : (difference > 0 ? 'Troppo alto' : 'Troppo basso');
     const emoji = isCorrect ? '🎯' : difference <= 10 ? '👍' : difference <= 30 ? '🤔' : '😅';
     
     guessItem.innerHTML = `
@@ -536,12 +536,12 @@ startAngleGame() {
     angleInput.focus();
   }, 500);
 }
-calculateAngleScore(attemptsUsed, maxAttempts) {
-  const baseScore = 100;
-  const attemptPenalty = (attemptsUsed - 1) * 20;
-  const perfectBonus = attemptsUsed === 1 ? 50 : 0;
-  
-  return Math.max(10, baseScore - attemptPenalty + perfectBonus);
+
+calculateAngleScore(difference, attempts) {
+    if (Math.abs(difference) <= 2) return 100;
+    const attemptPenalty = (attempts - 1) * 15;
+    const distancePenalty = Math.min(Math.abs(difference) * 1.5, 60);
+    return Math.max(0, Math.round(100 - attemptPenalty - distancePenalty));
 }
 
   /* =========================================================
@@ -992,8 +992,8 @@ calculateAngleScore(attemptsUsed, maxAttempts) {
      4. GIOCO: VELOCITÀ DIGITALE
   ========================================================= */
   startTypingSpeed() {
-    const modalContent = document.querySelector('.game-modal .modal-content');
-    const texts = [
+      const modalContent = document.querySelector('.game-modal .modal-content');
+      const texts = [
         "Il sole splende alto nel cielo azzurro mentre gli uccelli cinguettano felici tra gli alberi.",
         "La programmazione è l'arte di dare istruzioni ai computer per risolvere problemi complessi.",
         "L'Italia è famosa per la sua cucina, la moda, l'arte e il design di qualità mondiale.",
@@ -1044,305 +1044,155 @@ calculateAngleScore(attemptsUsed, maxAttempts) {
         "La bicicletta è un mezzo ecologico perfetto per esplorare le città e la campagna italiana.",
         "Il design del mobile italiano combina tradizione artigianale e innovazione contemporanea.",
         "La ceramica italiana, in particolare quella di Deruta e Caltagirone, è famosa nel mondo."
-    ];
-    
-    const text = texts[Math.floor(Math.random() * texts.length)];
-    let startTime = null;
-    let endTime = null;
-    let typedText = '';
-    let errors = 0;
-    let isGameActive = false;
-    let timerInterval = null;
-    
-    modalContent.innerHTML = `
-        <div class="typing-game">
-        <h2><i class="fas fa-keyboard"></i> Velocità Digitale</h2>
-        <p class="game-description">Digita il testo esattamente come appare. Premi INVIO per iniziare e controlla la tua velocità!</p>
-        
-        <div class="typing-instructions">
-            <div class="instruction">
-            <i class="fas fa-flag-checkered"></i> Obiettivo: Copia il testo il più velocemente possibile
-            </div>
-            <div class="instruction">
-            <i class="fas fa-lightbulb"></i> Suggerimento: Concentrati sulla precisione, non solo sulla velocità
-            </div>
-        </div>
-        
-        <div class="typing-text-container">
-            <div class="text-label">Testo da copiare:</div>
-            <div class="typing-text" id="typing-text">${text}</div>
-            <div class="text-stats">
-            <span><i class="fas fa-font"></i> ${text.length} caratteri</span>
-            <span><i class="fas fa-keyboard"></i> ${text.split(' ').length} parole</span>
-            </div>
-        </div>
-        
-        <div class="typing-input-container">
-            <div class="input-label">Il tuo testo:</div>
-            <textarea 
-            class="typing-input" 
-            id="typing-input" 
-            placeholder="Premi INVIO per iniziare il timer, poi digita qui..."
-            rows="4"
-            disabled
-            ></textarea>
-            <div class="input-hint">
-            <i class="fas fa-info-circle"></i> Il timer parte quando premi INVIO la prima volta
-            </div>
-        </div>
-        
-        <div class="typing-stats">
-            <div class="typing-stat">
-            <div class="typing-stat-value" id="wpm">0</div>
-            <div class="typing-stat-label">Parole/min</div>
-            </div>
-            <div class="typing-stat">
-            <div class="typing-stat-value" id="accuracy">100%</div>
-            <div class="typing-stat-label">Precisione</div>
-            </div>
-            <div class="typing-stat">
-            <div class="typing-stat-value" id="time">0.0s</div>
-            <div class="typing-stat-label">Tempo</div>
-            </div>
-            <div class="typing-stat">
-            <div class="typing-stat-value" id="errors">0</div>
-            <div class="typing-stat-label">Errori</div>
-            </div>
-        </div>
-        
-        <div class="typing-progress">
-            <div class="progress-label">Progresso:</div>
-            <div class="progress-bar">
-            <div class="progress-fill" id="typing-progress" style="width: 0%"></div>
-            </div>
-            <div class="progress-text" id="progress-text">0%</div>
-        </div>
-        
-        <div class="game-controls">
-            <button id="restart-typing" class="play-btn">
-            <i class="fas fa-redo"></i> Nuovo Testo
-            </button>
-            <button id="pause-typing" class="play-btn" style="display: none;">
-            <i class="fas fa-pause"></i> Pausa
-            </button>
-        </div>
-        
-        <div class="typing-leaderboard">
-            <div class="leaderboard-label">
-            <i class="fas fa-trophy"></i> I tuoi record
-            </div>
-            <div class="leaderboard-stats">
-            <div>Record velocità: <span id="best-wpm">${this.gameData.games['typing-speed']?.bestWPM || 0}</span> WPM</div>
-            <div>Migliore precisione: <span id="best-accuracy">${this.gameData.games['typing-speed']?.bestAccuracy || 0}%</span></div>
-            </div>
-        </div>
-        </div>
-    `;
-    
-    const input = document.getElementById('typing-input');
-    const wpmDisplay = document.getElementById('wpm');
-    const accuracyDisplay = document.getElementById('accuracy');
-    const timeDisplay = document.getElementById('time');
-    const errorsDisplay = document.getElementById('errors');
-    const progressBar = document.getElementById('typing-progress');
-    const progressText = document.getElementById('progress-text');
-    const restartBtn = document.getElementById('restart-typing');
-    const pauseBtn = document.getElementById('pause-typing');
-    const bestWpmDisplay = document.getElementById('best-wpm');
-    const bestAccuracyDisplay = document.getElementById('best-accuracy');
-    const originalText = text;
-    const textDisplay = document.getElementById('typing-text');
-    
-    const updateTextHighlight = () => {
-        const typed = typedText;
-        let highlightedText = '';
-        
-        for (let i = 0; i < originalText.length; i++) {
-        if (i < typed.length) {
-            if (typed[i] === originalText[i]) {
-            highlightedText += `<span class="char-correct">${originalText[i]}</span>`;
-            } else {
-            highlightedText += `<span class="char-wrong">${originalText[i]}</span>`;
-            }
-        } else if (i === typed.length) {
-            highlightedText += `<span class="char-current">${originalText[i]}</span>`;
-        } else {
-            highlightedText += `<span class="char-remaining">${originalText[i]}</span>`;
-        }
-        }
-        
-        textDisplay.innerHTML = highlightedText;
-    };
-    
-    // Inizializza evidenziazione
-    updateTextHighlight();
-    
-    // Gestione input
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !isGameActive) {
-        e.preventDefault();
-        startGame();
-        }
-        
-        // Blocca backspace se non è ancora iniziato
-        if (!isGameActive && e.key === 'Backspace') {
-        e.preventDefault();
-        }
-    });
-    
-    input.addEventListener('input', (e) => {
-        if (!isGameActive && e.target.value.trim() !== '') {
-        startGame();
-        }
-        
-        typedText = e.target.value;
-        updateTextHighlight();
-        
-        // Calcola errori
-        errors = 0;
-        for (let i = 0; i < Math.min(typedText.length, originalText.length); i++) {
-        if (typedText[i] !== originalText[i]) {
-            errors++;
-        }
-        }
-        
-        // Aggiungi errori per caratteri extra
-        if (typedText.length > originalText.length) {
-        errors += (typedText.length - originalText.length);
-        }
-        
-        errorsDisplay.textContent = errors;
-        
-        // Calcola progresso
-        const progress = Math.min(100, (typedText.length / originalText.length) * 100);
-        progressBar.style.width = `${progress}%`;
-        progressText.textContent = `${Math.floor(progress)}%`;
-        
-        // Calcola statistiche in tempo reale
-        if (startTime && isGameActive) {
-        const elapsed = (Date.now() - startTime) / 1000; // secondi
-        const words = typedText.trim().split(/\s+/).length;
-        const wpm = Math.floor((words / elapsed) * 60) || 0;
-        
-        // Calcola precisione
-        const correctChars = originalText.split('').filter((char, i) => 
-            i < typedText.length && char === typedText[i]
-        ).length;
-        const accuracy = typedText.length > 0 
-            ? Math.floor((correctChars / typedText.length) * 100)
-            : 100;
-        
-        wpmDisplay.textContent = wpm;
-        accuracyDisplay.textContent = `${accuracy}%`;
-        timeDisplay.textContent = `${elapsed.toFixed(1)}s`;
-        
-        // Aggiorna record in tempo reale
-        if (wpm > parseInt(bestWpmDisplay.textContent)) {
-            bestWpmDisplay.textContent = wpm;
-            bestWpmDisplay.classList.add('new-record');
-        }
-        
-        if (accuracy > parseInt(bestAccuracyDisplay.textContent)) {
-            bestAccuracyDisplay.textContent = accuracy;
-            bestAccuracyDisplay.classList.add('new-record');
-        }
-        }
-        
-        // Controlla se completato
-        if (typedText === originalText) {
-        endGame();
-        }
-    });
-    
-    const startGame = () => {
-        if (isGameActive) return;
-        
-        isGameActive = true;
-        startTime = Date.now();
-        input.disabled = false;
-        input.focus();
-        pauseBtn.style.display = 'block';
-        
-        // Avvia timer visivo
-        timerInterval = setInterval(() => {
-        if (!startTime || !isGameActive) return;
-        
-        const elapsed = (Date.now() - startTime) / 1000;
-        timeDisplay.textContent = `${elapsed.toFixed(1)}s`;
-        
-        // Auto-save ogni 5 secondi
-        if (Math.floor(elapsed) % 5 === 0) {
-            this.saveTypingProgress(typedText);
-        }
-        }, 100);
-    };
-    
-    const endGame = () => {
-        if (!isGameActive || endTime) return;
-        
-        endTime = Date.now();
-        clearInterval(timerInterval);
-        isGameActive = false;
-        input.disabled = true;
-        pauseBtn.style.display = 'none';
-        
-        const timeTaken = (endTime - startTime) / 1000;
-        const words = originalText.split(' ').length;
-        const wpm = Math.floor((words / timeTaken) * 60);
-        const accuracy = this.calculateTypingAccuracy(originalText, typedText);
-        
-        // Calcola punteggio finale
-        const baseScore = Math.floor(wpm * 2);
-        const accuracyBonus = Math.floor(accuracy / 2);
-        const errorPenalty = Math.max(0, 50 - (errors * 5));
-        const finalScore = baseScore + accuracyBonus + errorPenalty;
-        
-        // Animazione completamento
-        document.querySelectorAll('.char-correct').forEach(char => {
-        char.classList.add('completed');
-        });
-        
-        // Mostra risultati
-        setTimeout(() => {
-        this.showResult('Test Completato! ⚡', 
-            `Velocità: ${wpm} WPM\nPrecisione: ${accuracy}%\nErrori: ${errors}\nTempo: ${timeTaken.toFixed(1)} secondi\nPunteggio finale: ${finalScore}`, 
-            finalScore);
-        
-        // Salva statistiche
-        this.updateTypingStats(wpm, accuracy, finalScore);
-        }, 1000);
-    };
-    
-    const pauseGame = () => {
-        if (!isGameActive) return;
-        
-        isGameActive = !isGameActive;
-        
-        if (isGameActive) {
-        // Riprendi
-        startTime = Date.now() - (Date.now() - startTime);
-        pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pausa';
-        input.disabled = false;
-        } else {
-        // Metti in pausa
-        pauseBtn.innerHTML = '<i class="fas fa-play"></i> Riprendi';
-        input.disabled = true;
-        }
-    };
-    
-    // Event listeners
-    restartBtn.addEventListener('click', () => {
-        clearInterval(timerInterval);
-        this.startTypingSpeed();
-    });
-    
-    pauseBtn.addEventListener('click', pauseGame);
-    
-    // Auto-focus dopo caricamento
-    setTimeout(() => {
-        input.focus();
-    }, 500);
-    }
+      ];
+      
+      const text = texts[Math.floor(Math.random() * texts.length)];
+      let startTime = null;
+      let endTime = null;
+      let typedText = '';
+      let errors = 0;
+      let isGameActive = false;
+      let timerInterval = null;
+      
+      modalContent.innerHTML = `
+          <div class="typing-game">
+              <h2><i class="fas fa-keyboard"></i> Velocità Digitale</h2>
+              <p class="game-description">Digita il testo esattamente come appare. Il timer parte al primo tasto!</p>
+              
+              <div class="typing-text-container">
+                  <div class="text-label">Testo da copiare:</div>
+                  <div class="typing-text" id="typing-text">${text}</div>
+              </div>
+              
+              <div class="typing-input-container">
+                  <textarea 
+                      class="typing-input" 
+                      id="typing-input" 
+                      placeholder="Inizia a scrivere qui per far partire il timer..."
+                      rows="4"
+                  ></textarea>
+              </div>
+              
+              <div class="typing-stats">
+                  <div class="typing-stat">
+                      <div class="typing-stat-value" id="wpm">0</div>
+                      <div class="typing-stat-label">WPM</div>
+                  </div>
+                  <div class="typing-stat">
+                      <div class="typing-stat-value" id="accuracy">100%</div>
+                      <div class="typing-stat-label">Prec.</div>
+                  </div>
+                  <div class="typing-stat">
+                      <div class="typing-stat-value" id="time">0.0s</div>
+                      <div class="typing-stat-label">Tempo</div>
+                  </div>
+                  <div class="typing-stat">
+                      <div class="typing-stat-value" id="errors">0</div>
+                      <div class="typing-stat-label">Errori</div>
+                  </div>
+              </div>
+              
+              <div class="typing-progress">
+                  <div class="progress-bar"><div class="progress-fill" id="typing-progress" style="width: 0%"></div></div>
+              </div>
+              
+              <div class="game-controls">
+                  <button id="restart-typing" class="play-btn"><i class="fas fa-redo"></i> Nuovo Testo</button>
+              </div>
+          </div>
+      `;
+      
+      const input = document.getElementById('typing-input');
+      const wpmDisplay = document.getElementById('wpm');
+      const accuracyDisplay = document.getElementById('accuracy');
+      const timeDisplay = document.getElementById('time');
+      const errorsDisplay = document.getElementById('errors');
+      const progressBar = document.getElementById('typing-progress');
+      const textDisplay = document.getElementById('typing-text');
+      const restartBtn = document.getElementById('restart-typing');
+      const originalText = text;
+
+      const updateTextHighlight = () => {
+          let highlightedText = '';
+          for (let i = 0; i < originalText.length; i++) {
+              if (i < typedText.length) {
+                  const colorClass = typedText[i] === originalText[i] ? 'char-correct' : 'char-wrong';
+                  highlightedText += `<span class="${colorClass}">${originalText[i]}</span>`;
+              } else if (i === typedText.length) {
+                  highlightedText += `<span class="char-current">${originalText[i]}</span>`;
+              } else {
+                  highlightedText += `<span class="char-remaining">${originalText[i]}</span>`;
+              }
+          }
+          textDisplay.innerHTML = highlightedText;
+      };
+
+      const startGame = () => {
+          if (isGameActive) return;
+          isGameActive = true;
+          startTime = Date.now();
+          
+          timerInterval = setInterval(() => {
+              const elapsed = (Date.now() - startTime) / 1000;
+              timeDisplay.textContent = `${elapsed.toFixed(1)}s`;
+          }, 100);
+      };
+
+      const endGame = () => {
+          isGameActive = false;
+          clearInterval(timerInterval);
+          input.disabled = true;
+          const timeTaken = (Date.now() - startTime) / 1000;
+          const words = originalText.split(' ').length;
+          const wpm = Math.floor((words / timeTaken) * 60);
+          
+          this.showToast(`Fatto! Velocità: ${wpm} WPM`, 'success');
+          this.saveGameData(); // Assicurati che questo metodo esista nel tuo manager
+      };
+
+      input.addEventListener('input', (e) => {
+          if (!isGameActive && e.target.value.length > 0) {
+              startGame();
+          }
+
+          typedText = e.target.value;
+          updateTextHighlight();
+
+          // Conteggio errori
+          errors = 0;
+          for (let i = 0; i < typedText.length; i++) {
+              if (typedText[i] !== originalText[i]) errors++;
+          }
+          errorsDisplay.textContent = errors;
+
+          // Progresso
+          const progress = Math.min(100, (typedText.length / originalText.length) * 100);
+          progressBar.style.width = `${progress}%`;
+
+          // WPM e Accuracy
+          if (isGameActive && typedText.length > 0) {
+              const elapsed = (Date.now() - startTime) / 1000;
+              const words = typedText.trim().split(/\s+/).length;
+              wpmDisplay.textContent = Math.floor((words / elapsed) * 60) || 0;
+              
+              const accuracy = Math.floor(((typedText.length - errors) / typedText.length) * 100);
+              accuracyDisplay.textContent = `${Math.max(0, accuracy)}%`;
+          }
+
+          if (typedText === originalText) {
+              endGame();
+          }
+      });
+
+      restartBtn.addEventListener('click', () => {
+          clearInterval(timerInterval);
+          this.startTypingSpeed();
+      });
+
+      // Focus automatico
+      updateTextHighlight();
+      setTimeout(() => input.focus(), 100);
+  }
 
     calculateTypingAccuracy(original, typed) {
     if (typed.length === 0) return 100;
@@ -1948,7 +1798,22 @@ calculateAngleScore(attemptsUsed, maxAttempts) {
             this.showSpecialDuck('time');
             }, 3000);
         }
-        }
+    }
+    showSpecialDuck(reason) {
+      const duck = document.getElementById('minigame-duck');
+      const speech = document.getElementById('duck-speech');
+      
+      const messages = {
+          'icons': "Ehi! Smettila di cliccare così forte! 🦆",
+          'secret': "Hai scoperto il codice segreto! Quack!",
+          'completionist': "Hai provato tutto! Sei un vero esperto! 🏆"
+      };
+
+      speech.textContent = messages[reason] || "Quack!";
+      duck.classList.add('active');
+      
+      setTimeout(() => duck.classList.remove('active'), 4000);
+    }
 }
 
 // Inizializza quando il DOM è pronto
