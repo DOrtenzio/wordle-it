@@ -1,7 +1,7 @@
 {
   "name": "mordle-online-server",
   "version": "1.0.0",
-  "description": "Server multiplayer Wordle ITA",
+  "description": "Server multiplayer Mordle ITA",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

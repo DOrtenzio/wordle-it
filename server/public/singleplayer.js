@@ -1,8 +1,3 @@
-/* =========================================================
-   WORDLE SINGLEPLAYER - VERSIONE COMPLETA
-   Tastiera • Animazioni • Statistiche • Tema • Modalità difficile
-   ========================================================= */
-
 class SingleplayerGame {
   constructor() {
     this.word = "";                 // Parola da indovinare

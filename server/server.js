@@ -18,7 +18,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'Wordle Online ITA',
+    service: 'Mordle Online ITA',
     environment: NODE_ENV,
     port: PORT,
     uptime: process.uptime()
@@ -475,7 +475,7 @@ wss.on('connection', (ws, req) => {
   ws.send(JSON.stringify({
     type: 'welcome',
     playerId: playerId,
-    message: 'Benvenuto su Wordle ITA Online!',
+    message: 'Benvenuto su Mordle ITA Online!',
     timestamp: Date.now()
   }));
   

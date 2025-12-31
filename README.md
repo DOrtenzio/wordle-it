@@ -41,8 +41,8 @@ Un clone del famoso gioco di parole con modalità multiplayer online.
 
 ```bash
 # 1. Clona il repository
-git clone https://github.com/tuo-username/wordle-ita-online.git
-cd wordle-ita-online
+git clone https://github.com/DOrtenzio/mordle-it.git
+cd mordle-it
 
 # 2. Installa dipendenze del server
 cd server
@@ -52,7 +52,7 @@ npm install
 npm run dev
 
 # 4. Apri il browser su
-http://localhost:3000
+http://localhost:10000
 ```
 
 ### Deploy su Render (GRATIS)
@@ -69,33 +69,34 @@ http://localhost:3000
    - Clicca "New +" → "Web Service"
    - Connetti il tuo repository GitHub
    - Configura:
-     - **Name**: `wordle-online`
+     - **Name**: `mordle-online`
      - **Environment**: `Node`
      - **Build Command**: `npm install`
      - **Start Command**: `node server.js`
    - Clicca "Create Web Service"
 
-3. **Ottieni URL**: `https://wordle-online.onrender.com`
+3. **Ottieni URL**: `https://mordle-online.onrender.com`
 
 ## 📁 Struttura Progetto
 
 ```
-wordle-ita-online/
-├── public/                    # Frontend (HTML, CSS, JS)
-│   ├── index.html            # Pagina principale
-│   ├── style.css             # Stili principali
-│   ├── game.css              # Stili gioco
-│   ├── online.js             # Logica multiplayer
-│   ├── singleplayer.js       # Logica singleplayer
-│   └── words_it.js           # Dizionario italiano
+mordle-it/
 ├── server/                   # Backend Node.js
 │   ├── server.js            # Server principale
 │   ├── roomManager.js       # Gestione stanze
 │   ├── gameManager.js       # Logica gioco
 │   ├── autoPinger.js        # Mantiene server attivo
 │   ├── package.json         # Dipendenze
-|   ├── words_it.js           # Dizionario italiano
-│   └── render.yaml          # Configurazione Render
+|   ├── words_it.js          # Dizionario italiano
+│   ├── render.yaml          # Configurazione Render
+|   ├── node_modules/        # Ricorda di installarli se ti serve
+|   └── public/                    # Frontend (HTML, CSS, JS)
+│       ├── index.html            # Pagina principale
+│       ├── style.css             # Stili principali
+│       ├── game.css              # Stili gioco
+│       ├── online.js             # Logica multiplayer
+│       ├── singleplayer.js       # Logica singleplayer
+│       └── words_it.js           # Dizionario italiano
 ├── .gitignore               # File da ignorare
 └── README.md                # Questo file
 ```
