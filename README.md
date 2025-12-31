@@ -1,16 +1,16 @@
-# 🎮 Wordle ITA Online
+# 🎮 Mordle ITA Online
 
-**Gioca a Wordle in italiano con amici in tempo reale!**  
+**Gioca a Mordle in italiano con amici in tempo reale!**  
 Un clone del famoso gioco di parole con modalità multiplayer online.
 
-![Wordle ITA Online](https://img.shields.io/badge/Wordle-ITA-blue) 
+![Mordle ITA Online](https://img.shields.io/badge/Mordle-ITA-blue) 
 ![Multiplayer](https://img.shields.io/badge/Multiplayer-Online-green) 
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## ✨ Caratteristiche
 
 ### 🎯 Modalità Singleplayer
-- **Wordle classico** in italiano
+- **Mordle classico** in italiano
 - **6 tentativi** per indovinare parole di 5 lettere
 - **Tastiera colorata** con feedback visivo
 - **Statistiche personali** (vittorie, streak, record)
